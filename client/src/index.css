@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap');
+
+:root {
+  --color-primary: #ec4899;
+  --color-primary-dark: #db2777;
+  --color-primary-light: #f472b6;
+  --color-gold: #D4AF37;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -30,21 +39,31 @@ code {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #D4AF37;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #ec4899;
 }
 
-/* Utility classes */
+/* Utility classes with brand colors */
 .btn-primary {
-  @apply px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition;
+  background-color: var(--color-primary);
+  @apply px-4 py-2 text-white rounded-lg transition shadow-md hover:shadow-lg;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-dark);
 }
 
 .btn-secondary {
-  @apply px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition;
+  background-color: var(--color-gold);
+  @apply px-4 py-2 text-white rounded-lg transition shadow-md hover:shadow-lg;
+}
+
+.btn-secondary:hover {
+  opacity: 0.9;
 }
 
 .btn-danger {

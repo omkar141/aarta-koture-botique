@@ -1,16 +1,15 @@
 {
   "name": "boutique-app",
   "version": "1.0.0",
-  "description": "Full-stack boutique application",
+  "description": "Boutique frontend application",
   "private": true,
   "workspaces": [
-    "server",
     "client"
   ],
   "scripts": {
-    "dev": "npm run dev --workspaces",
-    "build": "npm run build --workspaces",
-    "start": "npm start --workspace=server"
+    "dev": "npm run dev --workspace=client",
+    "start": "npm start --workspace=client",
+    "build": "npm run build --workspace=client"
   },
   "keywords": [],
   "author": "",

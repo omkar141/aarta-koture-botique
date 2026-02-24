@@ -9,7 +9,7 @@ body {
 
 .App {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
 }
 
 /* ============ ANIMATIONS ============ */
@@ -53,9 +53,10 @@ body {
   background: white;
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  box-shadow: 0 4px 6px rgba(139, 21, 56, 0.1);
   margin-bottom: 24px;
   animation: fadeIn 0.4s ease-in;
+  border-top: 3px solid #D4AF37;
 }
 
 .form-section {
@@ -65,10 +66,10 @@ body {
 .form-section h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #2d3748;
+  color: var(--color-primary);
   margin-bottom: 16px;
   padding-bottom: 8px;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid #D4AF37;
 }
 
 .form-grid {
@@ -107,16 +108,16 @@ body {
 .form-group input:hover,
 .form-group select:hover,
 .form-group textarea:hover {
-  border-color: #a0aec0;
+  border-color: #D4AF37;
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #4299e1;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
-  background-color: #f0f7ff;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
+  background-color: #fdf2f8;
 }
 
 .form-group textarea {
@@ -146,13 +147,13 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   color: white;
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 15px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 8px 15px rgba(236, 72, 153, 0.4);
 }
 
 .btn-primary:active {
@@ -160,13 +161,13 @@ body {
 }
 
 .btn-secondary {
-  background-color: #edf2f7;
-  color: #2d3748;
-  border: 1px solid #cbd5e0;
+  background: linear-gradient(135deg, #D4AF37 0%, #BF9D30 100%);
+  color: white;
 }
 
 .btn-secondary:hover {
-  background-color: #e2e8f0;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px rgba(212, 175, 55, 0.4);
 }
 
 .btn-danger {

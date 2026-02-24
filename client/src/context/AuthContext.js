@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { authAPI } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -11,18 +12,15 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
       if (token) {
         try {
-          const response = await fetch('http://localhost:5001/api/auth/me', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data.user);
-          } else {
-            setToken(null);
-            localStorage.removeItem('token');
+          const storedUser = localStorage.getItem('boutique_current_user');
+          if (storedUser) {
+            setUser(JSON.parse(storedUser));
           }
         } catch (error) {
           console.error('Auth check failed:', error);
+          setToken(null);
+          localStorage.removeItem('token');
+          localStorage.removeItem('boutique_current_user');
         }
       }
       setLoading(false);
@@ -40,6 +38,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');
+    localStorage.removeItem('boutique_current_user');
   };
 
   return (

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { paymentAPI, orderAPI, customerAPI } from '../services/api';
+import Modal from '../components/Modal';
 
 const PaymentPage = () => {
   const [payments, setPayments] = useState([]);
@@ -36,7 +37,7 @@ const PaymentPage = () => {
     setLoading(true);
     try {
       const response = await paymentAPI.getAll();
-      setPayments(response.data.payments || []);
+      setPayments(Array.isArray(response.data) ? response.data : response.data.payments || []);
     } catch (err) {
       setError('Failed to load payments');
       console.error(err);
@@ -67,15 +68,14 @@ const PaymentPage = () => {
     const { name, value } = e.target;
     
     if (name === 'orderId') {
-      const order = orders.find(o => o._id === value);
+      const order = orders.find(o => (o._id === value || o.id === parseInt(value)));
+      const orderAmount = order ? parseFloat(order.amount || 0) : 0;
       setFormData(prev => ({
         ...prev,
         orderId: value,
         customerName: order ? order.customerName : '',
-        totalAmount: order ? order.amount || '' : '',
-        balanceAmount: order && prev.advancePaid 
-          ? (order.amount || 0) - parseFloat(prev.advancePaid || 0)
-          : order ? order.amount || '' : ''
+        totalAmount: orderAmount,
+        balanceAmount: prev.advancePaid ? orderAmount - parseFloat(prev.advancePaid || 0) : orderAmount
       }));
     } else if (name === 'advancePaid') {
       const totalAmount = parseFloat(formData.totalAmount || 0);
@@ -139,7 +139,7 @@ const PaymentPage = () => {
       paymentDate: payment.paymentDate?.split('T')[0] || new Date().toISOString().split('T')[0],
       notes: payment.notes || ''
     });
-    setEditingId(payment._id);
+    setEditingId(payment._id || payment.id);
     setShowForm(true);
   };
 
@@ -183,7 +183,7 @@ const PaymentPage = () => {
   const filteredPayments = payments.filter(payment => {
     const status = getPaymentStatus(payment);
     const matchStatus = filterStatus === 'All' || status === filterStatus;
-    const matchSearch = payment.customerName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchSearch = (payment.customerName || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchStatus && matchSearch;
   });
 
@@ -206,7 +206,7 @@ const PaymentPage = () => {
         <h1 className="text-3xl font-bold text-gray-800">Payment Management</h1>
         {!showForm && (
           <button
-            onClick={() => { setShowForm(true); resetForm(); }}
+            onClick={() => { resetForm(); setShowForm(true); }}
             className="btn btn-primary"
           >
             + Record Payment
@@ -234,16 +234,13 @@ const PaymentPage = () => {
       {success && <div className="alert alert-success">{success}</div>}
 
       {/* Add/Edit Form */}
-      {showForm && (
-        <div className="form-container fade-in">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-800">
-              {editingId ? 'Edit Payment' : 'Record Payment'}
-            </h2>
-            <button onClick={resetForm} className="text-gray-600 text-2xl">×</button>
-          </div>
-
-          <form onSubmit={handleSubmit}>
+      <Modal 
+        isOpen={showForm} 
+        onClose={resetForm} 
+        title={editingId ? 'Edit Payment' : 'Record Payment'} 
+        size="lg"
+      >
+        <form onSubmit={handleSubmit}>
             {/* Payment Selection Section */}
             <div className="form-section">
               <h3>Select Order</h3>
@@ -258,8 +255,8 @@ const PaymentPage = () => {
                   >
                     <option value="">Select Order</option>
                     {orders.map(o => (
-                      <option key={o._id} value={o._id}>
-                        {o.orderId || o._id.substring(0, 8)} - {o.customerName}
+                      <option key={o._id || o.id} value={o._id || o.id}>
+                        {o.orderId || (o.id ? `ORD${String(o.id).padStart(3, '0')}` : 'Unknown')} - {o.customerName || 'N/A'}
                       </option>
                     ))}
                   </select>
@@ -367,8 +364,7 @@ const PaymentPage = () => {
               </button>
             </div>
           </form>
-        </div>
-      )}
+        </Modal>
 
       {/* Status Filter */}
       <div className="bg-white rounded-lg p-4 shadow mb-6 overflow-x-auto">
@@ -423,8 +419,8 @@ const PaymentPage = () => {
             <tbody>
               {filteredPayments.length > 0 ? (
                 filteredPayments.map(payment => (
-                  <tr key={payment._id}>
-                    <td><strong>{payment.customerName}</strong></td>
+                  <tr key={payment._id || payment.id}>
+                    <td><strong>{payment.customerName || 'N/A'}</strong></td>
                     <td>₹{parseFloat(payment.totalAmount || 0).toFixed(2)}</td>
                     <td>₹{parseFloat(payment.advancePaid || 0).toFixed(2)}</td>
                     <td>₹{parseFloat(payment.balanceAmount || 0).toFixed(2)}</td>
@@ -444,7 +440,7 @@ const PaymentPage = () => {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDelete(payment._id)}
+                          onClick={() => handleDelete(payment._id || payment.id)}
                           className="btn btn-small btn-danger"
                         >
                           Delete
