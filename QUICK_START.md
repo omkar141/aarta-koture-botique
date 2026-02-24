@@ -1,39 +1,21 @@
-# Boutique App - Quick Start Commands & Cheat Sheet
+# Boutique App - Quick Start Guide (Frontend-Only V1.0)
 
 ## 🚀 One-Line Quick Start
 
-### Start Both Frontend and Backend (from root folder)
+### Start Frontend (from client folder)
 ```bash
-# Terminal 1 - Backend
-cd server && npm install && npm run dev
-
-# Terminal 2 - Frontend  
 cd client && npm install && npm start
 ```
 
-Backend URL: `http://localhost:5000`
-Frontend URL: `http://localhost:3000`
+**Frontend URL:** `http://localhost:3000`
+
+**Version:** Frontend V1.0  
+**Branch:** Frontend-VersionV1.0  
+**Architecture:** Frontend-Only with localStorage persistence
 
 ---
 
 ## 📋 Essential Commands
-
-### Backend Commands
-```bash
-cd server
-
-# Install dependencies
-npm install
-
-# Start development server (with auto-reload)
-npm run dev
-
-# Start production server
-npm start
-
-# Check server health
-curl http://localhost:5000/api/health
-```
 
 ### Frontend Commands
 ```bash
@@ -45,26 +27,26 @@ npm install
 # Start development server
 npm start
 
-# Build for production
+# Build for production  
 npm run build
 
 # Run tests
 npm test
-
-# Eject (NOT recommended)
-npm eject
 ```
 
 ---
 
 ## 🔑 Default Login Credentials
 
-```
-Email: admin@boutique.com
-Password: Admin@123
-```
+Test with these pre-configured accounts:
 
-**Note**: You need to create this user in MongoDB first (see SETUP_GUIDE.md)
+| Email | Role | Password |
+|-------|------|----------|
+| admin@aarta.com | Admin (Owner) | password123 |
+| staff@aarta.com | Staff | password123 |
+| accountant@aarta.com | Accountant | password123 |
+
+**Note:** All data is stored in browser localStorage and persists between sessions.
 
 ---
 

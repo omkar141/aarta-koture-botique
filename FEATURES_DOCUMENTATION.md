@@ -1,5 +1,59 @@
 # Boutique Management System - Feature Documentation
 
+## 🎉 Latest Features (V1.0)
+
+### 0. 📋 Advanced Order Management Modals
+
+**Location:** Orders page - Action buttons for each order
+
+#### Features:
+
+**1️⃣ Status Change Modal**
+- Click "Status" button on any order
+- Select from 6 status options:
+  - New
+  - In Stitching
+  - Trial Done
+  - Alteration
+  - Ready
+  - Delivered
+- Current status is highlighted in blue
+- Instantly updates order status
+- Scroll-friendly on mobile devices
+
+**2️⃣ Assign Staff Modal**
+- Click "Assign" button on any order
+- Displays all roles created in Access Control
+- Dynamically fetches roles (no hardcoded list)
+- Shows helpful message if no roles exist
+- Newly created roles immediately available
+- Updates assigned staff instantly
+
+**3️⃣ Order Timeline Modal**
+- Click "Timeline" button to see visual progression
+- Shows 3-phase timeline:
+  - **Order Placed:** Order creation date
+  - **Trial Scheduled:** Trial appointment date
+  - **Delivery:** Final delivery date
+- Color-coded indicators:
+  - 🔵 Blue (Order Placed)
+  - 🟠 Amber (Trial Scheduled) 
+  - 🟢 Green (Delivery)
+  - ⚪ Gray (Not scheduled)
+- Additional cards show:
+  - Current order status
+  - Assigned staff member
+  - Order details (dress type, fabric, amount)
+
+#### Benefits:
+- ✅ **Modal System:** Separate form UI doesn't disrupt viewing
+- ✅ **Role Integration:** Uses roles from Access Control, not hardcoded
+- ✅ **Responsive Design:** All modals work perfectly on mobile
+- ✅ **Real-time Updates:** Changes reflect immediately in table
+- ✅ **User-Friendly:** Clear visual indicators and helpful messages
+
+---
+
 ## 🎉 Newly Implemented Features
 
 ### 1. 🔐 Access Control Management (Owner Only)

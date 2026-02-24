@@ -1,36 +1,17 @@
 # Setup & Quick Start Guide
 
-## Quick Start (5 Minutes)
+## Quick Start (3 Minutes) - Frontend Only
 
-### 1. Prerequisites
+### Prerequisites
 ```bash
 # Check Node.js installation
 node --version  # Should be v14 or higher
 npm --version   # Should be v6 or higher
-
-# Install MongoDB (if using locally)
-# Or create account at https://www.mongodb.com/cloud/atlas
 ```
 
-### 2. Backend Setup
+**Note:** No backend or database setup required! This is a frontend-only demo app using browser localStorage.
 
-```bash
-# Navigate to server directory
-cd server
-
-# Install dependencies
-npm install
-
-# Update .env with MongoDB connection
-# For MongoDB Atlas:
-# MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/boutique-app
-
-# Start server
-npm run dev
-# Server runs on http://localhost:5000
-```
-
-### 3. Frontend Setup
+### Frontend Setup
 
 ```bash
 # Open new terminal, navigate to client directory
@@ -41,43 +22,75 @@ npm install
 
 # Start frontend
 npm start
-# App opens at http://localhost:3000
+# App opens at http://localhost:3000 automatically
 ```
 
-### 4. Create First Admin User
+### 4. Login with Demo Credentials
 
-Option A: Using Node.js script
-```bash
-# Create a script file: create-admin.js
-const mongoose = require('mongoose');
-const User = require('./server/src/models/User');
+The app comes with pre-configured demo users. Test with any of these:
 
-mongoose.connect('mongodb://localhost:27017/boutique-app');
+**Admin (Full Access):**
+- Email: `admin@aarta.com`
+- Password: `password123`
 
-const createAdmin = async () => {
-  const admin = new User({
-    userId: 'ADMIN-001',
-    name: 'Administrator',
-    email: 'admin@boutique.com',
-    password: 'Admin@123',
-    role: 'admin'
-  });
-  
-  await admin.save();
-  console.log('Admin created!');
-  process.exit();
-};
+**Staff:**
+- Email: `staff@aarta.com`
+- Password: `password123`
 
-createAdmin();
+**Accountant:**
+- Email: `accountant@aarta.com`
+- Password: `password123`
 
-# Run it
-node create-admin.js
+### 5. That's It! You're Ready to Go!
+
+The app is fully functional with demo data and features. All data is stored in browser localStorage.
+
+## Data Persistence
+
+All data is automatically saved to browser localStorage:
+- ✅ Data persists between browser sessions
+- ✅ No backend server required
+- ✅ Works offline
+- ⚠️ Limited to current browser profile (not synced across devices)
+
+To clear all data and start fresh:
+```javascript
+// In browser console:
+localStorage.clear();
+location.reload();
 ```
 
-Option B: Using MongoDB Compass or MongoDB Atlas UI
-1. Connect to MongoDB
-2. Create document in Users collection with admin role
-3. Password will be auto-hashed on first login attempt (requires code update)
+## Features Available
+
+✅ **Customer Management**
+- Create, edit, delete customers with measurements
+- Search by name or phone
+
+✅ **Order Management**  
+- Create and track orders with 6-step status progression
+- Change status via modal dialog
+- Assign orders to staff (roles from Access Control)
+- View interactive order timeline
+
+✅ **Payment Recording**
+- Record payments with modes (Cash, UPI, Card)
+- Auto-calculate balance from order amount
+- Track payment status
+
+✅ **Inventory Management**
+- Add items with categories and units
+- Track quantities and low stock alerts
+- Search and filter items
+
+✅ **Access Control** (Owner only)
+- Create custom roles with permissions
+- Assign roles to orders
+- Edit and manage user access
+
+✅ **User Profile**
+- View and edit profile information
+- Change password
+- View user statistics
 
 ### 5. Login Credentials
 

@@ -52,21 +52,23 @@
 - **Files**: `customerController.js`, `Customer.js`, `CustomerPage.js`
 
 #### Module 4: Order Management ✅
-- [x] Create orders with auto-generated IDs
+- [x] Create orders with auto-generated IDs (ORD001, ORD002, ...)
 - [x] Order fields:
-  - Customer Name (Dropdown)
-  - Dress Type
-  - Fabric Type
+  - Customer Name (Dropdown with auto-population)
+  - Dress Type and Fabric Type
   - Dates (Order, Trial, Delivery)
-  - Status tracking
-  - Notes
-- [x] Order Status:
-  - New, In Stitching, Trial Done, Alteration, Ready, Delivered
-- [x] Status change with timeline
-- [x] Assign orders to staff
-- [x] View order timeline
+  - Order Amount with notes
+  - Dynamic staff assignment from created roles
+- [x] Order Status (6-step progression):
+  - New → In Stitching → Trial Done → Alteration → Ready → Delivered
+- [x] Status Change Modal - Click "Status" button to change status with visual options
+- [x] Assign Staff Modal - Click "Assign" button to select from dynamically loaded roles
+- [x] View Order Timeline Modal - Click "Timeline" to see visual progression with dates
 - [x] Edit and delete orders
-- **Files**: `orderController.js`, `Order.js`, `OrderPage.js`
+- [x] Form Modal with proper open/close handling
+- [x] All modals fully functional and responsive
+- **Files**: `OrderPage.js`, `Modal.js` (shared component), `services/api.js`
+- **Fixed Issues**: Removed hardcoded staffMembers, integrated dynamic roles from Access Control
 
 #### Module 5: Payment Management ✅
 - [x] Record payments with modes (Cash, UPI, Card)
