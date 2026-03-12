@@ -1,0 +1,108 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: vg-boutique-prod
+  - name: nodeVersion
+    value: '20.x'
+
+stages:
+  - stage: CI
+    displayName: Build and Validate
+    jobs:
+      - job: Build
+        displayName: Build Client and Package API
+        steps:
+          - task: NodeTool@0
+            displayName: Use Node.js $(nodeVersion)
+            inputs:
+              versionSpec: '$(nodeVersion)'
+
+          - script: npm ci
+            displayName: Install dependencies (workspaces)
+
+          - script: npm run build --workspace=client
+            displayName: Build frontend
+            env:
+              REACT_APP_API_URL: $(apiBaseUrl)
+
+          - script: CI=true npm test --workspace=client -- --watch=false --passWithNoTests
+            displayName: Run frontend tests
+
+          - script: |
+              set -e
+              mkdir -p "$(Build.ArtifactStagingDirectory)/server"
+              cp -R server/* "$(Build.ArtifactStagingDirectory)/server/"
+              rm -rf "$(Build.ArtifactStagingDirectory)/server/node_modules"
+              rm -f "$(Build.ArtifactStagingDirectory)/server/.env"
+            displayName: Prepare server deployment package
+
+          - task: ArchiveFiles@2
+            displayName: Archive server package
+            inputs:
+              rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/server'
+              includeRootFolder: false
+              archiveType: zip
+              archiveFile: '$(Build.ArtifactStagingDirectory)/server.zip'
+              replaceExistingArchive: true
+
+          - publish: '$(Build.ArtifactStagingDirectory)/server.zip'
+            displayName: Publish API artifact
+            artifact: api-package
+
+  - stage: CD_Prod
+    displayName: Deploy to Production
+    dependsOn: CI
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: DeployApi
+        displayName: Deploy API Web App
+        environment: boutique-prod
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: api-package
+
+                - task: AzureWebApp@1
+                  displayName: Deploy API to Azure Web App
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    appType: webAppLinux
+                    appName: '$(apiWebAppName)'
+                    package: '$(Pipeline.Workspace)/api-package/server.zip'
+
+      - job: DeployFrontend
+        displayName: Deploy Frontend Static Web App
+        dependsOn: DeployApi
+        steps:
+          - checkout: self
+
+          - task: AzureStaticWebApp@0
+            displayName: Deploy Frontend to Static Web App
+            inputs:
+              app_location: 'client'
+              output_location: 'build'
+              azure_static_web_apps_api_token: '$(staticWebAppToken)'
+            env:
+              REACT_APP_API_URL: $(apiBaseUrl)
+
+      - job: SmokeTest
+        displayName: Post-Deploy Smoke Test
+        dependsOn: DeployFrontend
+        steps:
+          - script: |
+              set -e
+              curl -f "https://$(apiWebAppName).azurewebsites.net/api/health"
+            displayName: Check API health endpoint

@@ -58,6 +58,15 @@ Your complete web application is ready. Here's what you have:
    - Enhancements included
    - **REFERENCE FOR COMPLETENESS**
 
+### 6. **SETUP_CICD_AZURE_DEVOPS.md** - CI/CD Setup (Azure DevOps) ⚙️
+   - End-to-end Azure DevOps CI/CD setup
+   - Azure resources and service connections
+   - Variable groups and secret management
+   - Multi-stage YAML pipeline (CI + CD)
+   - App Service + Static Web App deployment
+   - Environment approvals and rollback plan
+   - **FOLLOW THIS FOR PRODUCTION PIPELINE SETUP**
+
 ---
 
 ## 🎯 What's Been Built
@@ -223,12 +232,13 @@ boutique-app/
 │   ├── Config (2)
 │   └── Main (4)
 │
-└── Documentation (5 files)
+└── Documentation (6 files)
     ├── README.md
     ├── SETUP_GUIDE.md
     ├── QUICK_START.md
     ├── CSS_RESPONSIVE_GUIDE.md
-    └── IMPLEMENTATION_SUMMARY.md
+   ├── IMPLEMENTATION_SUMMARY.md
+   └── SETUP_CICD_AZURE_DEVOPS.md
 ```
 
 ---
