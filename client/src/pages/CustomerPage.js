@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { customerAPI } from '../services/api';
+import Modal from '../components/Modal';
 
 const CustomerPage = () => {
   const [customers, setCustomers] = useState([]);
@@ -8,24 +9,26 @@ const CustomerPage = () => {
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
+    customerId: '',
     name: '',
     phone: '',
     email: '',
     address: '',
-    dateAdded: new Date().toISOString().split('T')[0]
-  });
-  const [measurements, setMeasurements] = useState({
-    shoulder: '',
-    bust: '',
-    waist: '',
-    hip: '',
-    sleeveLength: '',
-    dressLength: '',
-    notes: ''
+    dateAdded: new Date().toISOString().split('T')[0],
+    measurements: {
+      shoulder: '',
+      bust: '',
+      waist: '',
+      hip: '',
+      sleeveLength: '',
+      dressLength: '',
+      notes: ''
+    }
   });
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [showMeasurements, setShowMeasurements] = useState(false);
+  const [viewingOrders, setViewingOrders] = useState(null);
+  const [customerOrders, setCustomerOrders] = useState([]);
 
   useEffect(() => {
     fetchCustomers();
@@ -51,7 +54,13 @@ const CustomerPage = () => {
 
   const handleMeasurementChange = (e) => {
     const { name, value } = e.target;
-    setMeasurements(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      measurements: {
+        ...prev.measurements,
+        [name]: value
+      }
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -61,11 +70,12 @@ const CustomerPage = () => {
     setLoading(true);
 
     try {
+      const dataToSend = { ...formData };
       if (editingId) {
-        await customerAPI.update(editingId, formData);
+        await customerAPI.update(editingId, dataToSend);
         setSuccess('Customer updated successfully!');
       } else {
-        await customerAPI.create(formData);
+        await customerAPI.create(dataToSend);
         setSuccess('Customer added successfully!');
       }
       resetForm();
@@ -78,30 +88,14 @@ const CustomerPage = () => {
     }
   };
 
-  const handleAddMeasurement = async (customerId) => {
-    if (!measurements.shoulder || !measurements.bust) {
-      setError('Please fill at least shoulder and bust measurements');
-      return;
-    }
-    
+  const handleViewOrders = async (customerId) => {
     setLoading(true);
     try {
-      await customerAPI.addMeasurement(customerId, measurements);
-      setSuccess('Measurement added successfully!');
-      setMeasurements({
-        shoulder: '',
-        bust: '',
-        waist: '',
-        hip: '',
-        sleeveLength: '',
-        dressLength: '',
-        notes: ''
-      });
-      setShowMeasurements(false);
-      fetchCustomers();
-      setTimeout(() => setSuccess(''), 3000);
+      const response = await customerAPI.getOrders(customerId);
+      setCustomerOrders(response.data);
+      setViewingOrders(customerId);
     } catch (err) {
-      setError('Failed to add measurement');
+      setError('Failed to load customer orders');
     } finally {
       setLoading(false);
     }
@@ -109,15 +103,25 @@ const CustomerPage = () => {
 
   const handleEdit = (customer) => {
     setFormData({
+      customerId: customer.customerId || customer._id || customer.id,
       name: customer.name,
       phone: customer.phone,
       email: customer.email,
       address: customer.address,
-      dateAdded: customer.dateAdded?.split('T')[0] || new Date().toISOString().split('T')[0]
+      dateAdded: customer.dateAdded?.split('T')[0] || new Date().toISOString().split('T')[0],
+      measurements: customer.measurements || {
+        shoulder: '',
+        bust: '',
+        waist: '',
+        hip: '',
+        sleeveLength: '',
+        dressLength: '',
+        notes: ''
+      }
     });
-    setEditingId(customer._id);
+    setEditingId(customer._id || customer.id);
     setShowForm(true);
-    setShowMeasurements(false);
+    setViewingOrders(null);
   };
 
   const handleDelete = async (id) => {
@@ -138,28 +142,32 @@ const CustomerPage = () => {
 
   const resetForm = () => {
     setFormData({
+      customerId: '',
       name: '',
       phone: '',
       email: '',
       address: '',
-      dateAdded: new Date().toISOString().split('T')[0]
-    });
-    setMeasurements({
-      shoulder: '',
-      bust: '',
-      waist: '',
-      hip: '',
-      sleeveLength: '',
-      dressLength: '',
-      notes: ''
+      dateAdded: new Date().toISOString().split('T')[0],
+      measurements: {
+        shoulder: '',
+        bust: '',
+        waist: '',
+        hip: '',
+        sleeveLength: '',
+        dressLength: '',
+        notes: ''
+      }
     });
     setEditingId(null);
     setShowForm(false);
+    setViewingOrders(null);
   };
 
   const filteredCustomers = customers.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone.includes(searchTerm)
+    c.phone.includes(searchTerm) ||
+    (c.customerId && c.customerId.toString().includes(searchTerm)) ||
+    (c.id && c.id.toString().includes(searchTerm))
   );
 
   return (
@@ -168,7 +176,7 @@ const CustomerPage = () => {
         <h1 className="text-3xl font-bold text-gray-800">Customer Management</h1>
         {!showForm && (
           <button
-            onClick={() => { setShowForm(true); resetForm(); }}
+            onClick={() => { resetForm(); setShowForm(true); }}
             className="btn btn-primary"
           >
             + Add New Customer
@@ -179,210 +187,183 @@ const CustomerPage = () => {
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
 
-      {/* Add/Edit Form */}
-      {showForm && (
-        <div className="form-container fade-in">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-800">
-              {editingId ? 'Edit Customer' : 'Add New Customer'}
-            </h2>
-            <button onClick={resetForm} className="text-gray-600 text-2xl">×</button>
-          </div>
-
-          <form onSubmit={handleSubmit}>
-            {/* Basic Information Section */}
-            <div className="form-section">
-              <h3>Basic Information</h3>
-              <div className="form-grid">
+      {/* Add/Edit Form Modal */}
+      <Modal
+        isOpen={showForm}
+        onClose={resetForm}
+        title={editingId ? 'Edit Customer' : 'Add New Customer'}
+        size="lg"
+      >
+        <form onSubmit={handleSubmit}>
+          {/* Basic Information Section */}
+          <div className="form-section">
+            <h3>Basic Information</h3>
+            <div className="form-grid">
+              {editingId && (
                 <div className="form-group">
-                  <label>Name <span className="required">*</span></label>
+                  <label>Customer ID</label>
                   <input
                     type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="Full Name"
-                    required
+                    value={formData.customerId || editingId}
+                    disabled
+                    className="bg-gray-100"
                   />
                 </div>
+              )}
 
-                <div className="form-group">
-                  <label>Phone <span className="required">*</span></label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="+91 XXXXXXXXXX"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="email@example.com"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Date Added</label>
-                  <input
-                    type="date"
-                    name="dateAdded"
-                    value={formData.dateAdded}
-                    onChange={handleInputChange}
-                  />
-                </div>
+              <div className="form-group">
+                <label>Name <span className="required">*</span></label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  placeholder="Full Name"
+                  required
+                />
               </div>
 
-              <div className="form-group mt-4">
+              <div className="form-group">
+                <label>Phone Number <span className="required">*</span></label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  placeholder="+91 XXXXXXXXXX"
+                  pattern="^(\+91[\s]?)?[0-9]{10}$"
+                  title="Please enter a valid phone number with +91"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="email@example.com"
+                />
+              </div>
+
+              <div className="form-group">
                 <label>Address</label>
-                <textarea
+                <input
+                  type="text"
                   name="address"
                   value={formData.address}
                   onChange={handleInputChange}
                   placeholder="Full Address"
-                  rows="3"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Date Added</label>
+                <input
+                  type="date"
+                  name="dateAdded"
+                  value={formData.dateAdded}
+                  onChange={handleInputChange}
                 />
               </div>
             </div>
-
-            <div className="btn-container">
-              <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Saving...' : editingId ? 'Update Customer' : 'Add Customer'}
-              </button>
-              <button type="button" onClick={resetForm} className="btn btn-secondary">
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Measurements Form */}
-      {showMeasurements && editingId && (
-        <div className="form-container fade-in">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-800">Add Measurements</h2>
-            <button onClick={() => setShowMeasurements(false)} className="text-gray-600 text-2xl">×</button>
           </div>
 
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            handleAddMeasurement(editingId);
-          }}>
-            <div className="form-section">
-              <h3>Body Measurements (in inches)</h3>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Shoulder <span className="required">*</span></label>
+          {/* Measurements Section */}
+          <div className="form-section">
+            <h3>Measurements (in cm)</h3>
+            <div className="form-grid">
+              {['shoulder', 'bust', 'waist', 'hip', 'sleeveLength', 'dressLength'].map(field => (
+                <div key={field} className="form-group">
+                  <label>{field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')}</label>
                   <input
                     type="number"
-                    name="shoulder"
-                    value={measurements.shoulder}
+                    name={field}
+                    value={formData.measurements[field]}
                     onChange={handleMeasurementChange}
-                    placeholder="0.0"
-                    step="0.1"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Bust/Chest <span className="required">*</span></label>
-                  <input
-                    type="number"
-                    name="bust"
-                    value={measurements.bust}
-                    onChange={handleMeasurementChange}
-                    placeholder="0.0"
-                    step="0.1"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Waist</label>
-                  <input
-                    type="number"
-                    name="waist"
-                    value={measurements.waist}
-                    onChange={handleMeasurementChange}
-                    placeholder="0.0"
+                    placeholder="0"
                     step="0.1"
                   />
                 </div>
-
-                <div className="form-group">
-                  <label>Hip</label>
-                  <input
-                    type="number"
-                    name="hip"
-                    value={measurements.hip}
-                    onChange={handleMeasurementChange}
-                    placeholder="0.0"
-                    step="0.1"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Sleeve Length</label>
-                  <input
-                    type="number"
-                    name="sleeveLength"
-                    value={measurements.sleeveLength}
-                    onChange={handleMeasurementChange}
-                    placeholder="0.0"
-                    step="0.1"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Dress Length</label>
-                  <input
-                    type="number"
-                    name="dressLength"
-                    value={measurements.dressLength}
-                    onChange={handleMeasurementChange}
-                    placeholder="0.0"
-                    step="0.1"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group mt-4">
-                <label>Notes</label>
-                <textarea
-                  name="notes"
-                  value={measurements.notes}
-                  onChange={handleMeasurementChange}
-                  placeholder="Additional notes about measurements"
-                  rows="2"
-                />
-              </div>
+              ))}
             </div>
-
-            <div className="btn-container">
-              <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Saving...' : 'Save Measurement'}
-              </button>
-              <button type="button" onClick={() => setShowMeasurements(false)} className="btn btn-secondary">
-                Cancel
-              </button>
+            <div className="form-group">
+              <label>Notes</label>
+              <textarea
+                name="notes"
+                value={formData.measurements.notes}
+                onChange={handleMeasurementChange}
+                placeholder="Any special notes about measurements..."
+                rows="3"
+              />
             </div>
-          </form>
+          </div>
+
+          {/* Buttons */}
+          <div className="btn-container">
+            <button type="submit" disabled={loading} className="btn btn-primary">
+              {loading ? 'Saving...' : editingId ? 'Update Customer' : 'Add Customer'}
+            </button>
+            <button type="button" onClick={resetForm} className="btn btn-secondary">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* View Orders Modal */}
+      <Modal
+        isOpen={viewingOrders !== null}
+        onClose={() => setViewingOrders(null)}
+        title="Customer Orders"
+        size="lg"
+      >
+        {customerOrders && customerOrders.length > 0 ? (
+          <div className="table-responsive">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Dress Type</th>
+                  <th>Status</th>
+                  <th>Order Date</th>
+                  <th>Delivery Date</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customerOrders.map(order => (
+                  <tr key={order._id || order.id}>
+                    <td><strong>{order.orderId || order.id}</strong></td>
+                    <td>{order.dressType || order.orderType}</td>
+                    <td>
+                      <span className="badge badge-primary">{order.status}</span>
+                    </td>
+                    <td>{order.orderDate ? new Date(order.orderDate).toLocaleDateString() : '-'}</td>
+                    <td>{order.deliveryDate || order.dueDate ? new Date(order.deliveryDate || order.dueDate).toLocaleDateString() : '-'}</td>
+                    <td>₹{order.amount || order.totalAmount || '0'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-center text-gray-600 py-8">No orders found for this customer.</p>
+        )}
+        <div className="btn-container mt-6">
+          <button onClick={() => setViewingOrders(null)} className="btn btn-secondary">
+            Close
+          </button>
         </div>
-      )}
+      </Modal>
 
       {/* Search Bar */}
       <div className="search-box mb-6">
         <input
           type="text"
-          placeholder="Search by name or phone..."
+          placeholder="Search by Customer ID, name, or phone..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-1"
@@ -399,6 +380,7 @@ const CustomerPage = () => {
           <table className="table">
             <thead>
               <tr>
+                <th>Customer ID</th>
                 <th>Name</th>
                 <th>Phone</th>
                 <th>Email</th>
@@ -410,35 +392,29 @@ const CustomerPage = () => {
             <tbody>
               {filteredCustomers.length > 0 ? (
                 filteredCustomers.map(customer => (
-                  <tr key={customer._id}>
+                  <tr key={customer._id || customer.id}>
+                    <td><strong>{customer.customerId || customer.id}</strong></td>
                     <td><strong>{customer.name}</strong></td>
                     <td>{customer.phone}</td>
                     <td>{customer.email || '-'}</td>
                     <td>{customer.address || '-'}</td>
                     <td>{new Date(customer.dateAdded || customer.createdAt).toLocaleDateString()}</td>
                     <td>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <button
-                          onClick={() => {
-                            handleEdit(customer);
-                            setShowMeasurements(false);
-                          }}
+                          onClick={() => handleEdit(customer)}
                           className="btn btn-small btn-primary"
                         >
                           Edit
                         </button>
                         <button
-                          onClick={() => {
-                            setEditingId(customer._id);
-                            setShowForm(false);
-                            setShowMeasurements(true);
-                          }}
+                          onClick={() => handleViewOrders(customer._id || customer.id)}
                           className="btn btn-small btn-warning"
                         >
-                          Measure
+                          View Orders
                         </button>
                         <button
-                          onClick={() => handleDelete(customer._id)}
+                          onClick={() => handleDelete(customer._id || customer.id)}
                           className="btn btn-small btn-danger"
                         >
                           Delete
@@ -449,7 +425,7 @@ const CustomerPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="text-center py-4 text-gray-600">
+                  <td colSpan="7" className="text-center py-4 text-gray-600">
                     {searchTerm ? 'No customers found matching your search.' : 'No customers yet. Add one to get started!'}
                   </td>
                 </tr>

@@ -1,6 +1,20 @@
-# Boutique Management System
+# Aarta Kouture - Boutique Management System
 
-A comprehensive web-based management system for boutique owners to manage customers, orders, payments, inventory, and deliveries.
+A comprehensive web-based management system for boutique owners to manage customers, orders, payments, inventory, and roles. Built with React and Tailwind CSS with frontend-only architecture using localStorage for data persistence.
+
+**Current Version:** Frontend V1.0  
+**Branch:** `Frontend-VersionV1.0`  
+**Status:** ✅ Fully Functional and Production Ready
+
+## Key Highlights
+
+- 🚀 **Frontend-Only Architecture** - No backend required, uses localStorage for persistence
+- 🎨 **Aarta Kouture Branding** - Custom brand colors, logo, and professional styling
+- 📱 **Fully Responsive** - Works seamlessly on desktop, tablet, and mobile devices
+- 🔐 **Role-Based Access Control** - Admin, Staff, and Accountant roles with dynamic permissions
+- 📊 **Complete CRUD Operations** - Customers, Orders, Payments, and Inventory management
+- 🎯 **Advanced Order Management** - Status tracking, staff assignment, and interactive timeline
+- 💾 **Data Persistence** - All data automatically saved to browser localStorage
 
 ## Features
 
@@ -24,87 +38,62 @@ A comprehensive web-based management system for boutique owners to manage custom
 - Auto-generated Customer IDs
 
 ### Module 4: Order Management
-- Create and manage orders
-- Track order status (New, In Stitching, Trial Done, Alteration, Ready, Delivered)
-- Assign orders to staff members
-- Track order timeline with status changes
-- Add order notes
+- ✅ Create and manage orders with auto-generated IDs
+- ✅ 6-status tracking: New → In Stitching → Trial Done → Alteration → Ready → Delivered
+- ✅ Assign orders to staff members (dynamically from created roles)
+- ✅ Interactive order timeline with status progression visualization
+- ✅ Modal dialogs for status changes, staff assignment, and timeline viewing
+- ✅ Add order notes, track dates (order, trial, delivery)
 
 ### Module 5: Payment Management
-- Record payments with modes (Cash, UPI, Card)
-- Auto-calculate balance amount
-- Track payment status (Pending, Partial, Completed)
-- View pending payments report
+- ✅ Record payments with modes (Cash, UPI, Card)
+- ✅ Auto-populate customer and amount from order selection
+- ✅ Auto-calculate balance amount
+- ✅ Track payment status (Pending, Partial, Completed)
+- ✅ Preserve customer information in payment records
+- ✅ Search and filter payments
 
 ### Module 6: Inventory Management
-- Add inventory items with categories (Fabric, Lace, Button, Thread, Zipper)
-- Track quantity and minimum stock levels
-- Low stock alerts
-- Search and filter inventory
+- ✅ Add inventory items with categories (Fabric, Lace, Button, Thread, Zipper, Other)
+- ✅ Track quantity with low stock alerts
+- ✅ Set minimum stock levels and item unit preferences
+- ✅ Search and filter by name, category, and status
+- ✅ Update quantities with real-time stock status
 
-### Module 7: Reports
-- Monthly/Quarterly/Yearly revenue reports
-- Pending payments report
-- Delivery report
-- Staff workload analysis
-- Export to PDF and Excel (future phase)
+### Module 7: Access Control Management (Owner Only)
+- ✅ Create custom roles with specific permissions
+- ✅ Edit role descriptions and module access
+- ✅ Cannot delete default roles
+- ✅ Newly created roles available in order assignment dropdown
 
-### Module 8: Notifications
-- Delivery reminders (1 day before)
-- Trial date reminders
-- Low stock alerts
-- Pending payment reminders
+### Module 8: Profile Management
+- ✅ View and edit user profile information
+- ✅ Change password with validation
+- ✅ View user-level statistics (orders, customers, revenue)
+- ✅ Phone number and address management
 
 ## Tech Stack
 
-### Backend
-- **Node.js** with Express.js
-- **MongoDB** for database
-- **JWT** for authentication
-- **bcryptjs** for password hashing
-- **CORS** for cross-origin requests
-
 ### Frontend
-- **React 18** for UI
-- **React Router v6** for navigation
-- **Tailwind CSS** for responsive styling
-- **Axios** for API calls
-- **Context API** for state management
+- **React 18.2.0** - UI component framework
+- **React Router v6** - Client-side routing with role-based access
+- **Tailwind CSS 3.3.0** - Responsive utility-first styling
+- **Context API** - State management (AuthContext)
+- **localStorage API** - Data persistence layer
 
-## Installation
+### Architecture
+- **Frontend-Only** - No backend required for MVP
+- **Mock Data API** - API layer using localStorage CRUD operations
+- **Modal Components** - Reusable modal system for all forms and dialogs
+- CSS Variables** - Dynamic theming support
+
+## Installation & Quick Start
 
 ### Prerequisites
 - Node.js (v14 or higher)
-- MongoDB (local or cloud instance like MongoDB Atlas)
 - npm or yarn
 
-### Backend Setup
-
-1. Navigate to server directory:
-```bash
-cd server
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Create `.env` file:
-```env
-PORT=5000
-NODE_ENV=development
-MONGO_URI=mongodb://localhost:27017/boutique-app
-JWT_SECRET=your-secret-key-here
-JWT_EXPIRE=24h
-```
-
-4. Start the server:
-```bash
-npm run dev
-```
-
-### Frontend Setup
+### Frontend Setup (Frontend-Only Version)
 
 1. Navigate to client directory:
 ```bash
@@ -125,14 +114,45 @@ The application will open at `http://localhost:3000`
 
 ## Default Login Credentials
 
-You need to create an admin account. Run this setup script:
+The app comes with pre-configured demo users for testing. All passwords are: `password123`
 
+| Email | Role | Password |
+|-------|------|----------|
+| admin@aarta.com | Admin (Owner) | password123 |
+| staff@aarta.com | Staff | password123 |
+| accountant@aarta.com | Accountant | password123 |
+
+**Test Accounts:**
+- Admin: Full access to all features including Access Control and Settings
+- Staff: Can view/manage assigned orders and customers
+- Accountant: Can manage payments and generate reports
+
+## Data Persistence
+
+All data is automatically saved to the browser's **localStorage**. This means:
+- ✅ Data persists between browser sessions
+- ✅ No backend server required
+- ✅ Works offline
+- ⚠️ Data is limited to one browser profile (not synced across devices)
+
+To reset all data:
 ```javascript
-// Connect to MongoDB and create first admin
-const User = require('./server/src/models/User');
-connectDB();
-const adminUser = new User({
-  userId: 'ADMIN-001',
+// Clear localStorage (in browser console)
+localStorage.clear();
+location.reload();
+```
+
+## Features in Detail
+
+### Order Management System
+- **Create Orders:** Add new orders with customer selection, dress type, fabric, and dates
+- **Status Tracking:** 6-step status progression with visual indicators
+- **Staff Assignment:** Assign orders to staff via dynamic roles from Access Control
+- **Interactive Timeline:** Visual timeline showing order progression through all statuses
+- **Modal Dialogs:** 
+  - Status Change Modal - Select new status with highlighted current status
+  - Assign Staff Modal - Choose from dynamically loaded roles
+  - Order Timeline Modal - Beautiful visual timeline with status dates
   name: 'Administrator',
   email: 'admin@boutique.com',
   password: 'password123', // Change this

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { inventoryAPI } from '../services/api';
+import Modal from '../components/Modal';
 
 const InventoryPage = () => {
   const [items, setItems] = useState([]);
@@ -32,7 +33,7 @@ const InventoryPage = () => {
     setLoading(true);
     try {
       const response = await inventoryAPI.getAll();
-      setItems(response.data.inventory || []);
+      setItems(Array.isArray(response.data) ? response.data : response.data.inventory || []);
     } catch (err) {
       setError('Failed to load inventory');
       console.error(err);
@@ -102,7 +103,7 @@ const InventoryPage = () => {
       purchaseCost: item.purchaseCost || '',
       unit: item.unit || 'meters'
     });
-    setEditingId(item._id);
+    setEditingId(item._id || item.id);
     setShowForm(true);
   };
 
@@ -123,7 +124,7 @@ const InventoryPage = () => {
   };
 
   const handleUpdateQuantity = async (id, newQuantity) => {
-    const item = items.find(i => i._id === id);
+    const item = items.find(i => i._id === id || i.id === parseInt(id));
     if (!item) return;
 
     setLoading(true);
@@ -154,7 +155,8 @@ const InventoryPage = () => {
   const filteredItems = items.filter(item => {
     const status = getStockStatus(item);
     const matchStatus = filterStatus === 'All' || status === filterStatus;
-    const matchSearch = item.itemName.toLowerCase().includes(searchTerm.toLowerCase());
+    const itemName = item.itemName || item.name || '';
+    const matchSearch = itemName.toLowerCase().includes(searchTerm.toLowerCase());
     return matchStatus && matchSearch;
   });
 
@@ -180,7 +182,7 @@ const InventoryPage = () => {
         <h1 className="text-3xl font-bold text-gray-800">Inventory Management</h1>
         {!showForm && (
           <button
-            onClick={() => { setShowForm(true); resetForm(); }}
+            onClick={() => { resetForm(); setShowForm(true); }}
             className="btn btn-primary"
           >
             + Add Item
@@ -212,16 +214,13 @@ const InventoryPage = () => {
       {success && <div className="alert alert-success">{success}</div>}
 
       {/* Add/Edit Form */}
-      {showForm && (
-        <div className="form-container fade-in">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-800">
-              {editingId ? 'Edit Inventory Item' : 'Add New Item'}
-            </h2>
-            <button onClick={resetForm} className="text-gray-600 text-2xl">×</button>
-          </div>
-
-          <form onSubmit={handleSubmit}>
+      <Modal 
+        isOpen={showForm} 
+        onClose={resetForm} 
+        title={editingId ? 'Edit Inventory Item' : 'Add New Item'} 
+        size="lg"
+      >
+        <form onSubmit={handleSubmit}>
             {/* Item Details Section */}
             <div className="form-section">
               <h3>Item Information</h3>
@@ -331,8 +330,7 @@ const InventoryPage = () => {
               </button>
             </div>
           </form>
-        </div>
-      )}
+        </Modal>
 
       {/* Stock Status Filter */}
       <div className="bg-white rounded-lg p-4 shadow mb-6 overflow-x-auto">
@@ -389,12 +387,12 @@ const InventoryPage = () => {
             <tbody>
               {filteredItems.length > 0 ? (
                 filteredItems.map(item => (
-                  <tr key={item._id}>
-                    <td><strong>{item.itemName}</strong></td>
-                    <td>{item.category}</td>
-                    <td>{item.quantity} {item.unit}</td>
-                    <td>{item.unit}</td>
-                    <td>{item.minStock}</td>
+                  <tr key={item._id || item.id}>
+                    <td><strong>{item.itemName || item.name}</strong></td>
+                    <td>{item.category || '-'}</td>
+                    <td>{item.quantity || 0} {item.unit || '-'}</td>
+                    <td>{item.unit || '-'}</td>
+                    <td>{item.minStock || 0}</td>
                     <td>
                       <span className={`badge ${getStatusBadgeClass(item)}`}>
                         {getStockStatus(item)}
@@ -412,7 +410,7 @@ const InventoryPage = () => {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDelete(item._id)}
+                          onClick={() => handleDelete(item._id || item.id)}
                           className="btn btn-small btn-danger"
                         >
                           Delete
