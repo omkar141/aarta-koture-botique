@@ -111,7 +111,7 @@ const LoginPage = () => {
           <div className="space-y-2 text-xs">
             <div className="bg-brand-gold/10 px-3 py-2 rounded-lg border border-brand-gold/30">
               <strong className="text-primary-700">Owner:</strong>
-              <p className="text-gray-700 mt-1">admin@boutique.com / admin123</p>
+              <p className="text-gray-700 mt-1">admin@boutique.com / Aarta#Owner2026!</p>
             </div>
             <div className="bg-brand-gold/10 px-3 py-2 rounded-lg border border-brand-gold/30">
               <strong className="text-primary-700">Staff:</strong>
@@ -120,6 +120,10 @@ const LoginPage = () => {
             <div className="bg-brand-gold/10 px-3 py-2 rounded-lg border border-brand-gold/30">
               <strong className="text-primary-700">Accountant:</strong>
               <p className="text-gray-700 mt-1">accountant@boutique.com / accountant123</p>
+            </div>
+            <div className="bg-brand-gold/10 px-3 py-2 rounded-lg border border-brand-gold/30">
+              <strong className="text-primary-700">Latest seeded staff:</strong>
+              <p className="text-gray-700 mt-1">member50@boutique.com / password123</p>
             </div>
           </div>
         </div>

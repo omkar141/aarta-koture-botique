@@ -9,7 +9,7 @@ const SettingsPage = () => {
   const [logoPreview, setLogoPreview] = useState(null);
   const [businessName, setBusinessName] = useState('');
   const [businessTagline, setBusinessTagline] = useState('');
-  const [theme, setTheme] = useState('pink');
+  const [theme, setTheme] = useState('emerald');
   const [saveMessage, setSaveMessage] = useState('');
 
   // Load saved settings
@@ -19,7 +19,7 @@ const SettingsPage = () => {
       const settings = JSON.parse(savedSettings);
       setBusinessName(settings.businessName || 'Aarta Kouture');
       setBusinessTagline(settings.businessTagline || 'By Shruti Reddy');
-      setTheme(settings.theme || 'pink');
+      setTheme(settings.theme || 'emerald');
       if (settings.customLogo) {
         setLogoPreview(settings.customLogo);
       }

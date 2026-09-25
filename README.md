@@ -1,6 +1,6 @@
-# Aarta Kouture - Boutique Management System
+# Om Srinivas Boutique - Management System
 
-A comprehensive web-based management system for boutique owners to manage customers, orders, payments, inventory, and roles. Built with React and Tailwind CSS with frontend-only architecture using localStorage for data persistence.
+A comprehensive web-based management system for boutique owners to manage customers, orders, payments, inventory, and roles. Built with React and Tailwind CSS with an Express and SQLite backend for persistent data storage.
 
 **Current Version:** Frontend V1.0  
 **Branch:** `Frontend-VersionV1.0`  
@@ -8,13 +8,13 @@ A comprehensive web-based management system for boutique owners to manage custom
 
 ## Key Highlights
 
-- 🚀 **Frontend-Only Architecture** - No backend required, uses localStorage for persistence
-- 🎨 **Aarta Kouture Branding** - Custom brand colors, logo, and professional styling
+- 🚀 **SQLite Backend** - Persistent local database with authenticated REST APIs
+- 🎨 **Om Srinivas Boutique Branding** - Teal, champagne-gold, and terracotta styling
 - 📱 **Fully Responsive** - Works seamlessly on desktop, tablet, and mobile devices
 - 🔐 **Role-Based Access Control** - Admin, Staff, and Accountant roles with dynamic permissions
 - 📊 **Complete CRUD Operations** - Customers, Orders, Payments, and Inventory management
 - 🎯 **Advanced Order Management** - Status tracking, staff assignment, and interactive timeline
-- 💾 **Data Persistence** - All data automatically saved to browser localStorage
+- 💾 **Data Persistence** - All CRUD changes are stored in `server/boutique.sqlite`
 
 ## Features
 
@@ -79,11 +79,16 @@ A comprehensive web-based management system for boutique owners to manage custom
 - **React Router v6** - Client-side routing with role-based access
 - **Tailwind CSS 3.3.0** - Responsive utility-first styling
 - **Context API** - State management (AuthContext)
-- **localStorage API** - Data persistence layer
+- **Axios** - REST API client
+
+### Backend
+- **Node.js and Express** - REST API server
+- **SQLite with better-sqlite3** - Small-product relational database
+- **JWT and bcryptjs** - Authentication and password hashing
 
 ### Architecture
-- **Frontend-Only** - No backend required for MVP
-- **Mock Data API** - API layer using localStorage CRUD operations
+- **Client/server** - React communicates with the Express API over HTTP
+- **Database API** - CRUD operations use SQLite with foreign keys
 - **Modal Components** - Reusable modal system for all forms and dialogs
 - CSS Variables** - Dynamic theming support
 
@@ -93,34 +98,29 @@ A comprehensive web-based management system for boutique owners to manage custom
 - Node.js (v14 or higher)
 - npm or yarn
 
-### Frontend Setup (Frontend-Only Version)
+### Application Setup
 
-1. Navigate to client directory:
-```bash
-cd client
-```
-
-2. Install dependencies:
+1. Install dependencies from the repository root:
 ```bash
 npm install
 ```
 
-3. Start the development server:
+2. Start the API and frontend together:
 ```bash
-npm start
+npm run dev
 ```
 
-The application will open at `http://localhost:3000`
+The application opens at `http://localhost:3000` and the API runs at `http://localhost:4000`. The first API start creates the SQLite file and seeds the demo users, roles, customers, orders, and inventory.
 
 ## Default Login Credentials
 
-The app comes with pre-configured demo users for testing. All passwords are: `password123`
+The app comes with pre-configured demo users for testing.
 
 | Email | Role | Password |
 |-------|------|----------|
-| admin@aarta.com | Admin (Owner) | password123 |
-| staff@aarta.com | Staff | password123 |
-| accountant@aarta.com | Accountant | password123 |
+| admin@boutique.com | Owner | Aarta#Owner2026! |
+| staff@boutique.com | Staff | staff123 |
+| accountant@boutique.com | Accountant | accountant123 |
 
 **Test Accounts:**
 - Admin: Full access to all features including Access Control and Settings
@@ -129,18 +129,27 @@ The app comes with pre-configured demo users for testing. All passwords are: `pa
 
 ## Data Persistence
 
-All data is automatically saved to the browser's **localStorage**. This means:
-- ✅ Data persists between browser sessions
-- ✅ No backend server required
-- ✅ Works offline
-- ⚠️ Data is limited to one browser profile (not synced across devices)
+Data is stored in SQLite at `server/boutique.sqlite`. Set `JWT_SECRET` and optionally `CLIENT_URL` in the environment before deploying. The frontend can use a different API URL with `REACT_APP_API_URL`.
 
-To reset all data:
-```javascript
-// Clear localStorage (in browser console)
-localStorage.clear();
-location.reload();
+### Customer Email Notifications
+
+When a customer is created with an email address, the API sends a branded welcome email after the customer is saved. SMTP is provider-neutral and can be configured with the variables in `server/.env.example`:
+
+```env
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_SECURE=false
+MAIL_USER=your-smtp-username
+MAIL_PASSWORD=your-smtp-password
+MAIL_FROM=Om Srinivas Boutique <no-reply@example.com>
+MAIL_NOTIFY_EMAILS=owner@example.com
 ```
+
+All editable mail templates are registered in `server/emailTemplates/index.js`; each template includes both HTML and plain text versions. Notifications are sent for customer, order, payment, inventory, user, and role creates/updates, plus order status/assignment, inventory quantity, customer measurements, and user status/password changes. Customer-related events go to the related customer, user events go to the affected user, and inventory/role events use `MAIL_NOTIFY_EMAILS`.
+
+If SMTP is not configured or no recipient exists, the record is still saved and the server logs that the email was skipped. Delivery failures are also logged without undoing the database change.
+
+To reset development data, stop the API and remove `server/boutique.sqlite`; it will be recreated and seeded on the next start.
 
 ## Features in Detail
 
@@ -155,7 +164,7 @@ location.reload();
   - Order Timeline Modal - Beautiful visual timeline with status dates
   name: 'Administrator',
   email: 'admin@boutique.com',
-  password: 'password123', // Change this
+  password: 'Aarta#Owner2026!', // Change this
   role: 'admin'
 });
 await adminUser.save();

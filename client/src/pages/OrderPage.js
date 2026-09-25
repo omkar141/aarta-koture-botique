@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { orderAPI, customerAPI, roleAPI } from '../services/api';
+import { orderAPI, customerAPI, userAPI } from '../services/api';
 import Modal from '../components/Modal';
+import TablePagination from '../components/TablePagination';
 
 const OrderPage = () => {
   const [orders, setOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
-  const [roles, setRoles] = useState([]);
+  const [staffUsers, setStaffUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -16,7 +17,9 @@ const OrderPage = () => {
   const [showTimeline, setShowTimeline] = useState(null);
   const [showStatusModal, setShowStatusModal] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
-  
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const [formData, setFormData] = useState({
     orderId: '',
     customerId: '',
@@ -39,8 +42,12 @@ const OrderPage = () => {
   useEffect(() => {
     fetchOrders();
     fetchCustomers();
-    fetchRoles();
+    fetchStaffUsers();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus]);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -64,19 +71,19 @@ const OrderPage = () => {
     }
   };
 
-  const fetchRoles = async () => {
+  const fetchStaffUsers = async () => {
     try {
-      const response = await roleAPI.getAll();
-      setRoles(response.data.roles || []);
+      const response = await userAPI.getAll();
+      setStaffUsers((response.data.users || []).filter(user => user.status === 'active'));
     } catch (err) {
-      console.error('Failed to load roles:', err);
+      console.error('Failed to load staff users:', err);
     }
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     if (name === 'customerId') {
-      const customer = customers.find(c => c._id === value);
+      const customer = customers.find(c => String(c.id) === value);
       setFormData(prev => ({
         ...prev,
         customerId: value,
@@ -202,6 +209,7 @@ const OrderPage = () => {
                        order.id?.toString().includes(searchTerm);
     return matchStatus && matchSearch;
   });
+  const paginatedOrders = filteredOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const getStatusBadgeClass = (status) => {
     const badgeClasses = {
@@ -232,7 +240,6 @@ const OrderPage = () => {
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
 
-      {/* Add/Edit Form Modal */}
       <Modal
         isOpen={showForm}
         onClose={resetForm}
@@ -240,7 +247,6 @@ const OrderPage = () => {
         size="lg"
       >
         <form onSubmit={handleSubmit}>
-          {/* Order Details Section */}
           <div className="form-section">
             <h3>Order Details</h3>
             <div className="form-grid">
@@ -285,7 +291,7 @@ const OrderPage = () => {
                   ))}
                 </select>
               </div>
-              
+
               <div className="form-group">
                 <label>Fabric Type <span className="required">*</span></label>
                 <select
@@ -352,12 +358,12 @@ const OrderPage = () => {
                   onChange={handleInputChange}
                 >
                   <option value="">Unassigned</option>
-                  {roles.length > 0 ? (
-                    roles.map(role => (
-                      <option key={role.id} value={role.name}>{role.displayName || role.name}</option>
+                  {staffUsers.length > 0 ? (
+                    staffUsers.map(staff => (
+                      <option key={staff.id} value={staff.name}>{staff.name}</option>
                     ))
                   ) : (
-                    <option disabled>No roles available</option>
+                    <option disabled>No staff users available</option>
                   )}
                 </select>
               </div>
@@ -399,7 +405,6 @@ const OrderPage = () => {
         </form>
       </Modal>
 
-      {/* Status Change Modal */}
       <Modal
         isOpen={showStatusModal !== null}
         onClose={() => setShowStatusModal(null)}
@@ -430,7 +435,6 @@ const OrderPage = () => {
         )}
       </Modal>
 
-      {/* Assign Staff Modal */}
       <Modal
         isOpen={showAssignModal !== null}
         onClose={() => setShowAssignModal(null)}
@@ -440,21 +444,21 @@ const OrderPage = () => {
         {showAssignModal && (
           <div className="space-y-4">
             <p className="text-gray-600 mb-4">Select staff member to assign:</p>
-            {roles.length > 0 ? (
+            {staffUsers.length > 0 ? (
               <div className="grid grid-cols-2 gap-3">
-                {roles.map(role => (
+                {staffUsers.map(staff => (
                   <button
-                    key={role.id}
-                    onClick={() => handleAssignStaff(showAssignModal._id || showAssignModal.id, role.name)}
-                    className={`btn ${showAssignModal.assignedTo === role.name ? 'btn-primary' : 'btn-secondary'}`}
+                    key={staff.id}
+                    onClick={() => handleAssignStaff(showAssignModal._id || showAssignModal.id, staff.name)}
+                    className={`btn ${showAssignModal.assignedTo === staff.name ? 'btn-primary' : 'btn-secondary'}`}
                     disabled={loading}
                   >
-                    {role.displayName || role.name}
+                    {staff.name}
                   </button>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-4">No roles available. Create roles in Access Control first.</p>
+              <p className="text-gray-500 text-center py-4">No active staff users available.</p>
             )}
             <div className="mt-6 pt-4 border-t">
               <button onClick={() => setShowAssignModal(null)} className="btn btn-secondary w-full">
@@ -465,7 +469,6 @@ const OrderPage = () => {
         )}
       </Modal>
 
-      {/* Order Timeline Modal */}
       <Modal
         isOpen={showTimeline !== null}
         onClose={() => setShowTimeline(null)}
@@ -474,7 +477,6 @@ const OrderPage = () => {
       >
         {showTimeline && (
           <div className="space-y-6">
-            {/* Order Placed */}
             <div className="flex">
               <div className="w-24 flex-shrink-0">
                 <div className="w-4 h-4 bg-blue-500 rounded-full mx-2 mt-1.5"></div>
@@ -487,7 +489,6 @@ const OrderPage = () => {
               </div>
             </div>
 
-            {/* Trial Scheduled */}
             <div className="flex">
               <div className="w-24 flex-shrink-0">
                 <div className={`w-4 h-4 rounded-full mx-2 mt-1.5 ${showTimeline.trialDate ? 'bg-amber-500' : 'bg-gray-300'}`}></div>
@@ -500,7 +501,6 @@ const OrderPage = () => {
               </div>
             </div>
 
-            {/* Delivery */}
             <div className="flex">
               <div className="w-24 flex-shrink-0">
                 <div className={`w-4 h-4 rounded-full mx-2 mt-1.5 ${showTimeline.deliveryDate ? 'bg-green-500' : 'bg-gray-300'}`}></div>
@@ -513,13 +513,11 @@ const OrderPage = () => {
               </div>
             </div>
 
-            {/* Current Status */}
             <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <h4 className="font-semibold text-gray-800 mb-2">Current Status</h4>
               <p className="text-blue-700 font-medium">{showTimeline.status}</p>
             </div>
 
-            {/* Assigned Staff */}
             {showTimeline.assignedTo && (
               <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
                 <h4 className="font-semibold text-gray-800 mb-2">Assigned To</h4>
@@ -527,7 +525,6 @@ const OrderPage = () => {
               </div>
             )}
 
-            {/* Details */}
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <h4 className="font-semibold text-gray-800 mb-3">Order Details</h4>
               <div className="space-y-2 text-sm">
@@ -547,18 +544,13 @@ const OrderPage = () => {
         )}
       </Modal>
 
-      {/* Status Filter */}
       <div className="bg-white rounded-lg p-4 shadow mb-6 overflow-x-auto">
         <div className="flex gap-2 flex-wrap">
           {['All', ...statuses].map((status) => (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
-              className={`btn btn-small ${
-                filterStatus === status 
-                  ? 'btn-primary' 
-                  : 'btn-secondary'
-              }`}
+              className={`btn btn-small ${filterStatus === status ? 'btn-primary' : 'btn-secondary'}`}
             >
               {status}
             </button>
@@ -566,7 +558,6 @@ const OrderPage = () => {
         </div>
       </div>
 
-      {/* Search Bar */}
       <div className="search-box mb-6">
         <input
           type="text"
@@ -577,94 +568,105 @@ const OrderPage = () => {
         />
       </div>
 
-      {/* Orders Table */}
       {loading && !showForm ? (
         <div className="text-center py-8">
           <p className="text-gray-600">Loading orders...</p>
         </div>
       ) : (
-        <div className="table-responsive">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Order ID</th>
-                <th>Customer</th>
-                <th>Dress Type</th>
-                <th>Fabric</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Assigned To</th>
-                <th>Delivery Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.length > 0 ? (
-                filteredOrders.map(order => (
-                  <tr key={order._id || order.id}>
-                    <td><strong>{order.orderId || order.id}</strong></td>
-                    <td>{order.customerName}</td>
-                    <td>{order.dressType}</td>
-                    <td>{order.fabricType}</td>
-                    <td>₹{order.amount || '0'}</td>
-                    <td>
-                      <span className={`badge ${getStatusBadgeClass(order.status)}`}>
-                        {order.status}
-                      </span>
-                    </td>
-                    <td>{order.assignedTo || '-'}</td>
-                    <td>{order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : '-'}</td>
-                    <td>
-                      <div className="flex gap-2 flex-wrap">
-                        <button
-                          onClick={() => handleEdit(order)}
-                          className="btn btn-small btn-primary"
-                          title="Edit Order"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => setShowStatusModal(order)}
-                          className="btn btn-small btn-warning"
-                          title="Change Status"
-                        >
-                          Status
-                        </button>
-                        <button
-                          onClick={() => setShowAssignModal(order)}
-                          className="btn btn-small btn-secondary"
-                          title="Assign to Staff"
-                        >
-                          Assign
-                        </button>
-                        <button
-                          onClick={() => setShowTimeline(order)}
-                          className="btn btn-small"
-                          style={{ backgroundColor: '#6366f1', color: 'white' }}
-                          title="View Timeline"
-                        >
-                          Timeline
-                        </button>
-                        <button
-                          onClick={() => handleDelete(order._id || order.id)}
-                          className="btn btn-small btn-danger"
-                          title="Delete Order"
-                        >
-                          Delete
-                        </button>
-                      </div>
+        <div>
+          <div className="table-responsive">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Customer</th>
+                  <th>Dress Type</th>
+                  <th>Fabric</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Assigned To</th>
+                  <th>Delivery Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedOrders.length > 0 ? (
+                  paginatedOrders.map(order => (
+                    <tr key={order._id || order.id}>
+                      <td><strong>{order.orderId || order.id}</strong></td>
+                      <td>{order.customerName}</td>
+                      <td>{order.dressType}</td>
+                      <td>{order.fabricType}</td>
+                      <td>₹{order.amount || '0'}</td>
+                      <td>
+                        <span className={`badge ${getStatusBadgeClass(order.status)}`}>
+                          {order.status}
+                        </span>
+                      </td>
+                      <td>{order.assignedTo || '-'}</td>
+                      <td>{order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : '-'}</td>
+                      <td>
+                        <div className="flex gap-2 flex-wrap">
+                          <button
+                            onClick={() => handleEdit(order)}
+                            className="btn btn-small btn-primary"
+                            title="Edit Order"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setShowStatusModal(order)}
+                            className="btn btn-small btn-warning"
+                            title="Change Status"
+                          >
+                            Status
+                          </button>
+                          <button
+                            onClick={() => setShowAssignModal(order)}
+                            className="btn btn-small btn-secondary"
+                            title="Assign to Staff"
+                          >
+                            Assign
+                          </button>
+                          <button
+                            onClick={() => setShowTimeline(order)}
+                            className="btn btn-small"
+                            style={{ backgroundColor: '#6366f1', color: 'white' }}
+                            title="View Timeline"
+                          >
+                            Timeline
+                          </button>
+                          <button
+                            onClick={() => handleDelete(order._id || order.id)}
+                            className="btn btn-small btn-danger"
+                            title="Delete Order"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="9" className="text-center py-4 text-gray-600">
+                      {searchTerm ? 'No orders found matching your search.' : 'No orders yet. Create one to get started!'}
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="9" className="text-center py-4 text-gray-600">
-                    {searchTerm ? 'No orders found matching your search.' : 'No orders yet. Create one to get started!'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <TablePagination
+            page={currentPage}
+            pageSize={pageSize}
+            totalItems={filteredOrders.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(nextSize) => {
+              setPageSize(nextSize);
+              setCurrentPage(1);
+            }}
+          />
         </div>
       )}
     </div>

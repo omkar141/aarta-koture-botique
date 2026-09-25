@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { userAPI, roleAPI } from '../services/api';
+import TablePagination from '../components/TablePagination';
 
 const AccessControlPage = () => {
   const { user: currentUser } = useAuth();
@@ -14,6 +15,10 @@ const AccessControlPage = () => {
   const [showRoleForm, setShowRoleForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersPageSize, setUsersPageSize] = useState(10);
+  const [rolesPage, setRolesPage] = useState(1);
+  const [rolesPageSize, setRolesPageSize] = useState(10);
 
   const [userFormData, setUserFormData] = useState({
     name: '',
@@ -254,6 +259,9 @@ const AccessControlPage = () => {
     setShowRoleForm(false);
   };
 
+  const paginatedUsers = users.slice((usersPage - 1) * usersPageSize, usersPage * usersPageSize);
+  const paginatedRoles = roles.slice((rolesPage - 1) * rolesPageSize, rolesPage * rolesPageSize);
+
   if (currentUser?.role !== 'owner') {
     return (
       <div className="p-6">
@@ -437,7 +445,7 @@ const AccessControlPage = () => {
                   </thead>
                   <tbody>
                     {users.length > 0 ? (
-                      users.map(user => (
+                      paginatedUsers.map(user => (
                         <tr key={user.id}>
                           <td><strong>{user.name}</strong></td>
                           <td>{user.email}</td>
@@ -488,6 +496,13 @@ const AccessControlPage = () => {
                     )}
                   </tbody>
                 </table>
+                <TablePagination
+                  totalItems={users.length}
+                  page={usersPage}
+                  pageSize={usersPageSize}
+                  onPageChange={setUsersPage}
+                  onPageSizeChange={(size) => { setUsersPageSize(size); setUsersPage(1); }}
+                />
               </div>
             )}
           </div>
@@ -602,7 +617,7 @@ const AccessControlPage = () => {
                 </thead>
                 <tbody>
                   {roles.length > 0 ? (
-                    roles.map(role => (
+                    paginatedRoles.map(role => (
                       <tr key={role.id}>
                         <td><strong>{role.displayName}</strong></td>
                         <td>{role.description || '-'}</td>
@@ -653,6 +668,13 @@ const AccessControlPage = () => {
                   )}
                 </tbody>
               </table>
+              <TablePagination
+                totalItems={roles.length}
+                page={rolesPage}
+                pageSize={rolesPageSize}
+                onPageChange={setRolesPage}
+                onPageSizeChange={(size) => { setRolesPageSize(size); setRolesPage(1); }}
+              />
             </div>
           </div>
         )}

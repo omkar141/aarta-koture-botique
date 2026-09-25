@@ -1,57 +1,56 @@
 import React, { useState, useEffect } from 'react';
-import { paymentAPI, orderAPI, customerAPI } from '../services/api';
+import { paymentAPI, customerAPI, orderAPI } from '../services/api';
 import Modal from '../components/Modal';
+import TablePagination from '../components/TablePagination';
 
 const PaymentPage = () => {
   const [payments, setPayments] = useState([]);
-  const [orders, setOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [filterStatus, setFilterStatus] = useState('All');
-  const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [filterStatus, setFilterStatus] = useState('All');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const [formData, setFormData] = useState({
+    paymentId: '',
+    customerId: '',
     orderId: '',
-    customerName: '',
-    totalAmount: '',
-    advancePaid: '',
-    balanceAmount: '',
-    paymentMode: 'Cash',
+    amount: '',
     paymentDate: new Date().toISOString().split('T')[0],
+    status: 'Pending',
+    method: 'Cash',
     notes: ''
   });
 
-  const paymentModes = ['Cash', 'UPI', 'Card', 'Cheque', 'Bank Transfer'];
+  const statusOptions = ['Pending', 'Paid', 'Failed', 'Refunded'];
+  const methodOptions = ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Wallet'];
 
   useEffect(() => {
     fetchPayments();
-    fetchOrders();
     fetchCustomers();
+    fetchOrders();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus]);
 
   const fetchPayments = async () => {
     setLoading(true);
     try {
       const response = await paymentAPI.getAll();
-      setPayments(Array.isArray(response.data) ? response.data : response.data.payments || []);
+      setPayments(response.data.payments || []);
     } catch (err) {
       setError('Failed to load payments');
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchOrders = async () => {
-    try {
-      const response = await orderAPI.getAll();
-      setOrders(response.data.orders || []);
-    } catch (err) {
-      console.error('Failed to load orders:', err);
     }
   };
 
@@ -64,60 +63,56 @@ const PaymentPage = () => {
     }
   };
 
+  const fetchOrders = async () => {
+    try {
+      const response = await orderAPI.getAll();
+      setOrders(response.data.orders || []);
+    } catch (err) {
+      console.error('Failed to load orders:', err);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      paymentId: '',
+      customerId: '',
+      orderId: '',
+      amount: '',
+      paymentDate: new Date().toISOString().split('T')[0],
+      status: 'Pending',
+      method: 'Cash',
+      notes: ''
+    });
+    setEditingId(null);
+    setShowForm(false);
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
-    if (name === 'orderId') {
-      const order = orders.find(o => (o._id === value || o.id === parseInt(value)));
-      const orderAmount = order ? parseFloat(order.amount || 0) : 0;
-      setFormData(prev => ({
-        ...prev,
-        orderId: value,
-        customerName: order ? order.customerName : '',
-        totalAmount: orderAmount,
-        balanceAmount: prev.advancePaid ? orderAmount - parseFloat(prev.advancePaid || 0) : orderAmount
-      }));
-    } else if (name === 'advancePaid') {
-      const totalAmount = parseFloat(formData.totalAmount || 0);
-      const advancePaid = parseFloat(value || 0);
-      const balance = totalAmount - advancePaid;
-      setFormData(prev => ({
-        ...prev,
-        advancePaid: value,
-        balanceAmount: balance > 0 ? balance.toFixed(2) : '0.00'
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!formData.orderId || !formData.advancePaid) {
-      setError('Please select an order and enter amount paid');
-      return;
-    }
-    
+    setLoading(true);
     setError('');
     setSuccess('');
-    setLoading(true);
 
     try {
-      const submitData = {
+      const payload = {
         ...formData,
-        totalAmount: parseFloat(formData.totalAmount),
-        advancePaid: parseFloat(formData.advancePaid),
-        balanceAmount: parseFloat(formData.balanceAmount || 0)
+        paymentMethod: formData.method,
+        amount: Number(formData.amount) || 0
       };
 
       if (editingId) {
-        await paymentAPI.update(editingId, submitData);
+        await paymentAPI.update(editingId, payload);
         setSuccess('Payment updated successfully!');
       } else {
-        await paymentAPI.create(submitData);
-        setSuccess('Payment recorded successfully!');
+        await paymentAPI.create(payload);
+        setSuccess('Payment created successfully!');
       }
+
       resetForm();
       fetchPayments();
       setTimeout(() => setSuccess(''), 3000);
@@ -130,13 +125,13 @@ const PaymentPage = () => {
 
   const handleEdit = (payment) => {
     setFormData({
+      paymentId: payment.paymentId || payment.id,
+      customerId: payment.customerId,
       orderId: payment.orderId,
-      customerName: payment.customerName,
-      totalAmount: payment.totalAmount,
-      advancePaid: payment.advancePaid,
-      balanceAmount: payment.balanceAmount,
-      paymentMode: payment.paymentMode,
+      amount: payment.amount || '',
       paymentDate: payment.paymentDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+      status: payment.status,
+      method: payment.method || payment.paymentMode || payment.paymentMethod || '',
       notes: payment.notes || ''
     });
     setEditingId(payment._id || payment.id);
@@ -159,225 +154,137 @@ const PaymentPage = () => {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      orderId: '',
-      customerName: '',
-      totalAmount: '',
-      advancePaid: '',
-      balanceAmount: '',
-      paymentMode: 'Cash',
-      paymentDate: new Date().toISOString().split('T')[0],
-      notes: ''
-    });
-    setEditingId(null);
-    setShowForm(false);
-  };
-
-  const getPaymentStatus = (payment) => {
-    if (payment.balanceAmount <= 0) return 'Completed';
-    if (payment.advancePaid > 0) return 'Partial';
-    return 'Pending';
-  };
-
   const filteredPayments = payments.filter(payment => {
-    const status = getPaymentStatus(payment);
-    const matchStatus = filterStatus === 'All' || status === filterStatus;
-    const matchSearch = (payment.customerName || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchStatus = filterStatus === 'All' || payment.status === filterStatus;
+    const customerName = customers.find(c => c.id === payment.customerId)?.name || '';
+    const matchSearch = payment.paymentId?.toString().includes(searchTerm) ||
+      payment.orderId?.toString().includes(searchTerm) ||
+      customerName.toLowerCase().includes(searchTerm.toLowerCase());
     return matchStatus && matchSearch;
   });
 
-  const getStatusBadgeClass = (payment) => {
-    const status = getPaymentStatus(payment);
+  const paginatedPayments = filteredPayments.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const totalPaid = payments.filter(p => p.status === 'Paid').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const totalPending = payments.filter(p => p.status === 'Pending').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const totalRevenue = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const getStatusBadgeClass = (status) => {
     const badgeClasses = {
-      'Completed': 'badge-completed',
-      'Partial': 'badge-pending',
-      'Pending': 'badge-new'
+      Paid: 'badge-completed',
+      Pending: 'badge-pending',
+      Failed: 'badge-danger',
+      Refunded: 'badge-new'
     };
     return badgeClasses[status] || 'badge-new';
   };
-
-  const totalRevenue = payments.reduce((sum, p) => sum + parseFloat(p.advancePaid || 0), 0);
-  const pendingAmount = payments.reduce((sum, p) => sum + parseFloat(p.balanceAmount || 0), 0);
 
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Payment Management</h1>
         {!showForm && (
-          <button
-            onClick={() => { resetForm(); setShowForm(true); }}
-            className="btn btn-primary"
-          >
-            + Record Payment
+          <button onClick={() => setShowForm(true)} className="btn btn-primary">
+            + Add Payment
           </button>
         )}
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg p-6 shadow">
-          <h3 className="text-gray-600 text-sm font-semibold mb-2">Total Revenue</h3>
-          <p className="text-3xl font-bold text-green-600">₹{totalRevenue.toFixed(2)}</p>
-        </div>
-        <div className="bg-white rounded-lg p-6 shadow">
-          <h3 className="text-gray-600 text-sm font-semibold mb-2">Pending Amount</h3>
-          <p className="text-3xl font-bold text-red-600">₹{pendingAmount.toFixed(2)}</p>
-        </div>
-        <div className="bg-white rounded-lg p-6 shadow">
-          <h3 className="text-gray-600 text-sm font-semibold mb-2">Total Payments</h3>
-          <p className="text-3xl font-bold text-blue-600">{payments.length}</p>
-        </div>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
 
-      {/* Add/Edit Form */}
-      <Modal 
-        isOpen={showForm} 
-        onClose={resetForm} 
-        title={editingId ? 'Edit Payment' : 'Record Payment'} 
-        size="lg"
-      >
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="stat-card">
+          <h3>Total Revenue</h3>
+          <p className="stat-value">₹{totalRevenue.toLocaleString()}</p>
+        </div>
+        <div className="stat-card">
+          <h3>Paid</h3>
+          <p className="stat-value">₹{totalPaid.toLocaleString()}</p>
+        </div>
+        <div className="stat-card">
+          <h3>Pending</h3>
+          <p className="stat-value">₹{totalPending.toLocaleString()}</p>
+        </div>
+      </div>
+
+      <Modal isOpen={showForm} onClose={resetForm} title={editingId ? 'Edit Payment' : 'Add Payment'} size="lg">
         <form onSubmit={handleSubmit}>
-            {/* Payment Selection Section */}
-            <div className="form-section">
-              <h3>Select Order</h3>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Order <span className="required">*</span></label>
-                  <select
-                    name="orderId"
-                    value={formData.orderId}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select Order</option>
-                    {orders.map(o => (
-                      <option key={o._id || o.id} value={o._id || o.id}>
-                        {o.orderId || (o.id ? `ORD${String(o.id).padStart(3, '0')}` : 'Unknown')} - {o.customerName || 'N/A'}
-                      </option>
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Customer</label>
+              <select name="customerId" value={formData.customerId} onChange={handleInputChange} required>
+                <option value="">Select customer</option>
+                {customers.map(customer => (
+                  <option key={customer._id || customer.id} value={customer._id || customer.id}>{customer.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Order ID</label>
+                <select name="orderId" value={formData.orderId} onChange={handleInputChange} required>
+                  <option value="">Select order</option>
+                  {orders
+                    .filter(order => !formData.customerId || order.customerId === Number(formData.customerId))
+                    .map(order => (
+                      <option key={order.id} value={order.id}>{order.orderId} - {order.customerName}</option>
                     ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Customer</label>
-                  <input
-                    type="text"
-                    value={formData.customerName}
-                    disabled
-                    className="bg-gray-100"
-                  />
-                </div>
-              </div>
+                </select>
             </div>
 
-            {/* Amount Section */}
-            <div className="form-section">
-              <h3>Payment Details</h3>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Total Order Amount</label>
-                  <input
-                    type="number"
-                    value={formData.totalAmount}
-                    disabled
-                    className="bg-gray-100"
-                    step="0.01"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Amount Paid <span className="required">*</span></label>
-                  <input
-                    type="number"
-                    name="advancePaid"
-                    value={formData.advancePaid}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    step="0.01"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Balance Amount (Auto-Calculated)</label>
-                  <input
-                    type="number"
-                    value={formData.balanceAmount}
-                    disabled
-                    className="bg-gray-100"
-                    step="0.01"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Payment Mode</label>
-                  <select
-                    name="paymentMode"
-                    value={formData.paymentMode}
-                    onChange={handleInputChange}
-                  >
-                    {paymentModes.map(mode => (
-                      <option key={mode} value={mode}>{mode}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+            <div className="form-group">
+              <label>Amount</label>
+              <input type="number" name="amount" value={formData.amount} onChange={handleInputChange} required min="0" step="0.01" />
             </div>
 
-            {/* Date & Notes Section */}
-            <div className="form-section">
-              <h3>Additional Information</h3>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Payment Date</label>
-                  <input
-                    type="date"
-                    name="paymentDate"
-                    value={formData.paymentDate}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group mt-4">
-                <label>Notes</label>
-                <textarea
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  placeholder="Additional notes..."
-                  rows="2"
-                />
-              </div>
+            <div className="form-group">
+              <label>Payment Date</label>
+              <input type="date" name="paymentDate" value={formData.paymentDate} onChange={handleInputChange} required />
             </div>
 
-            <div className="btn-container">
-              <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Saving...' : editingId ? 'Update Payment' : 'Record Payment'}
-              </button>
-              <button type="button" onClick={resetForm} className="btn btn-secondary">
-                Cancel
-              </button>
+            <div className="form-group">
+              <label>Status</label>
+              <select name="status" value={formData.status} onChange={handleInputChange}>
+                {statusOptions.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
             </div>
-          </form>
-        </Modal>
 
-      {/* Status Filter */}
+            <div className="form-group">
+              <label>Method</label>
+              <select name="method" value={formData.method} onChange={handleInputChange}>
+                {methodOptions.map(method => (
+                  <option key={method} value={method}>{method}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Notes</label>
+            <textarea name="notes" value={formData.notes} onChange={handleInputChange} rows="3" placeholder="Payment notes..." />
+          </div>
+
+          <div className="btn-container">
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Saving...' : editingId ? 'Update Payment' : 'Create Payment'}
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={resetForm}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       <div className="bg-white rounded-lg p-4 shadow mb-6 overflow-x-auto">
         <div className="flex gap-2 flex-wrap">
-          {['All', 'Pending', 'Partial', 'Completed'].map((status) => (
+          {['All', ...statusOptions].map((status) => (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
-              className={`btn btn-small ${
-                filterStatus === status 
-                  ? 'btn-success' 
-                  : 'btn-secondary'
-              }`}
+              className={`btn btn-small ${filterStatus === status ? 'btn-primary' : 'btn-secondary'}`}
             >
               {status}
             </button>
@@ -385,79 +292,87 @@ const PaymentPage = () => {
         </div>
       </div>
 
-      {/* Search Bar */}
       <div className="search-box mb-6">
         <input
           type="text"
-          placeholder="Search by customer name..."
+          placeholder="Search by customer, order ID, or payment ID..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-1"
         />
       </div>
 
-      {/* Payments Table */}
-      {loading && !showForm ? (
+      {loading ? (
         <div className="text-center py-8">
           <p className="text-gray-600">Loading payments...</p>
         </div>
       ) : (
-        <div className="table-responsive">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Customer</th>
-                <th>Total Amount</th>
-                <th>Amount Paid</th>
-                <th>Balance</th>
-                <th>Status</th>
-                <th>Payment Mode</th>
-                <th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPayments.length > 0 ? (
-                filteredPayments.map(payment => (
-                  <tr key={payment._id || payment.id}>
-                    <td><strong>{payment.customerName || 'N/A'}</strong></td>
-                    <td>₹{parseFloat(payment.totalAmount || 0).toFixed(2)}</td>
-                    <td>₹{parseFloat(payment.advancePaid || 0).toFixed(2)}</td>
-                    <td>₹{parseFloat(payment.balanceAmount || 0).toFixed(2)}</td>
-                    <td>
-                      <span className={`badge ${getStatusBadgeClass(payment)}`}>
-                        {getPaymentStatus(payment)}
-                      </span>
-                    </td>
-                    <td>{payment.paymentMode}</td>
-                    <td>{new Date(payment.paymentDate || payment.createdAt).toLocaleDateString()}</td>
-                    <td>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(payment)}
-                          className="btn btn-small btn-primary"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(payment._id || payment.id)}
-                          className="btn btn-small btn-danger"
-                        >
-                          Delete
-                        </button>
-                      </div>
+        <div>
+          <div className="table-responsive">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Payment ID</th>
+                  <th>Customer</th>
+                  <th>Order ID</th>
+                  <th>Amount</th>
+                  <th>Method</th>
+                  <th>Status</th>
+                  <th>Payment Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedPayments.length > 0 ? (
+                  paginatedPayments.map(payment => {
+                    const customerName = customers.find(c => c.id === payment.customerId)?.name || 'Unknown';
+                    return (
+                      <tr key={payment._id || payment.id}>
+                        <td><strong>{payment.paymentId || payment.id}</strong></td>
+                        <td>{customerName}</td>
+                        <td>{payment.orderId}</td>
+                        <td>₹{Number(payment.amount || 0).toLocaleString()}</td>
+                        <td>{payment.method || payment.paymentMode || payment.paymentMethod || '-'}</td>
+                        <td>
+                          <span className={`badge ${getStatusBadgeClass(payment.status)}`}>
+                            {payment.status}
+                          </span>
+                        </td>
+                        <td>{payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : '-'}</td>
+                        <td>
+                          <div className="flex gap-2 flex-wrap">
+                            <button onClick={() => handleEdit(payment)} className="btn btn-small btn-primary">
+                              Edit
+                            </button>
+                            <button onClick={() => handleDelete(payment._id || payment.id)} className="btn btn-small btn-danger">
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="8" className="text-center py-4 text-gray-600">
+                      {searchTerm ? 'No payments found matching your search.' : 'No payments recorded yet.'}
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="8" className="text-center py-4 text-gray-600">
-                    {searchTerm ? 'No payments found matching your search.' : 'No payments recorded yet.'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <TablePagination
+            page={currentPage}
+            pageSize={pageSize}
+            totalItems={filteredPayments.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(nextSize) => {
+              setPageSize(nextSize);
+              setCurrentPage(1);
+            }}
+          />
         </div>
       )}
     </div>

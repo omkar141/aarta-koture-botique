@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { customerAPI } from '../services/api';
 import Modal from '../components/Modal';
+import TablePagination from '../components/TablePagination';
 
 const CustomerPage = () => {
   const [customers, setCustomers] = useState([]);
@@ -29,10 +30,18 @@ const CustomerPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [viewingOrders, setViewingOrders] = useState(null);
   const [customerOrders, setCustomerOrders] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersPageSize, setOrdersPageSize] = useState(10);
 
   useEffect(() => {
     fetchCustomers();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -61,6 +70,28 @@ const CustomerPage = () => {
         [name]: value
       }
     }));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      customerId: '',
+      name: '',
+      phone: '',
+      email: '',
+      address: '',
+      dateAdded: new Date().toISOString().split('T')[0],
+      measurements: {
+        shoulder: '',
+        bust: '',
+        waist: '',
+        hip: '',
+        sleeveLength: '',
+        dressLength: '',
+        notes: ''
+      }
+    });
+    setEditingId(null);
+    setShowForm(false);
   };
 
   const handleSubmit = async (e) => {
@@ -92,7 +123,7 @@ const CustomerPage = () => {
     setLoading(true);
     try {
       const response = await customerAPI.getOrders(customerId);
-      setCustomerOrders(response.data);
+      setCustomerOrders(Array.isArray(response.data) ? response.data : response.data.orders || []);
       setViewingOrders(customerId);
     } catch (err) {
       setError('Failed to load customer orders');
@@ -106,69 +137,50 @@ const CustomerPage = () => {
       customerId: customer.customerId || customer._id || customer.id,
       name: customer.name,
       phone: customer.phone,
-      email: customer.email,
-      address: customer.address,
-      dateAdded: customer.dateAdded?.split('T')[0] || new Date().toISOString().split('T')[0],
-      measurements: customer.measurements || {
-        shoulder: '',
-        bust: '',
-        waist: '',
-        hip: '',
-        sleeveLength: '',
-        dressLength: '',
-        notes: ''
+      email: customer.email || '',
+      address: customer.address || '',
+      dateAdded: customer.dateAdded ? customer.dateAdded.split('T')[0] : new Date().toISOString().split('T')[0],
+      measurements: {
+        shoulder: customer.measurements?.shoulder || '',
+        bust: customer.measurements?.bust || '',
+        waist: customer.measurements?.waist || '',
+        hip: customer.measurements?.hip || '',
+        sleeveLength: customer.measurements?.sleeveLength || '',
+        dressLength: customer.measurements?.dressLength || '',
+        notes: customer.measurements?.notes || ''
       }
     });
     setEditingId(customer._id || customer.id);
     setShowForm(true);
-    setViewingOrders(null);
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this customer?')) {
+    if (!window.confirm('Are you sure you want to delete this customer?')) {
+      return;
+    }
+
+    try {
       setLoading(true);
-      try {
-        await customerAPI.delete(id);
-        setSuccess('Customer deleted successfully!');
-        fetchCustomers();
-        setTimeout(() => setSuccess(''), 3000);
-      } catch (err) {
-        setError('Failed to delete customer');
-      } finally {
-        setLoading(false);
-      }
+      await customerAPI.delete(id);
+      setSuccess('Customer deleted successfully!');
+      fetchCustomers();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError('Failed to delete customer');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      customerId: '',
-      name: '',
-      phone: '',
-      email: '',
-      address: '',
-      dateAdded: new Date().toISOString().split('T')[0],
-      measurements: {
-        shoulder: '',
-        bust: '',
-        waist: '',
-        hip: '',
-        sleeveLength: '',
-        dressLength: '',
-        notes: ''
-      }
-    });
-    setEditingId(null);
-    setShowForm(false);
-    setViewingOrders(null);
-  };
-
   const filteredCustomers = customers.filter(c =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone.includes(searchTerm) ||
+    c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.phone?.includes(searchTerm) ||
     (c.customerId && c.customerId.toString().includes(searchTerm)) ||
     (c.id && c.id.toString().includes(searchTerm))
   );
+
+  const paginatedCustomers = filteredCustomers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedOrders = customerOrders.slice((ordersPage - 1) * ordersPageSize, ordersPage * ordersPageSize);
 
   return (
     <div className="p-6">
@@ -187,7 +199,6 @@ const CustomerPage = () => {
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
 
-      {/* Add/Edit Form Modal */}
       <Modal
         isOpen={showForm}
         onClose={resetForm}
@@ -195,7 +206,6 @@ const CustomerPage = () => {
         size="lg"
       >
         <form onSubmit={handleSubmit}>
-          {/* Basic Information Section */}
           <div className="form-section">
             <h3>Basic Information</h3>
             <div className="form-grid">
@@ -238,13 +248,14 @@ const CustomerPage = () => {
               </div>
 
               <div className="form-group">
-                <label>Email</label>
+                <label>Email <span className="required">*</span></label>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="email@example.com"
+                  required
                 />
               </div>
 
@@ -271,7 +282,6 @@ const CustomerPage = () => {
             </div>
           </div>
 
-          {/* Measurements Section */}
           <div className="form-section">
             <h3>Measurements (in cm)</h3>
             <div className="form-grid">
@@ -301,7 +311,6 @@ const CustomerPage = () => {
             </div>
           </div>
 
-          {/* Buttons */}
           <div className="btn-container">
             <button type="submit" disabled={loading} className="btn btn-primary">
               {loading ? 'Saving...' : editingId ? 'Update Customer' : 'Add Customer'}
@@ -313,7 +322,6 @@ const CustomerPage = () => {
         </form>
       </Modal>
 
-      {/* View Orders Modal */}
       <Modal
         isOpen={viewingOrders !== null}
         onClose={() => setViewingOrders(null)}
@@ -334,7 +342,7 @@ const CustomerPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {customerOrders.map(order => (
+                {paginatedOrders.map(order => (
                   <tr key={order._id || order.id}>
                     <td><strong>{order.orderId || order.id}</strong></td>
                     <td>{order.dressType || order.orderType}</td>
@@ -342,12 +350,19 @@ const CustomerPage = () => {
                       <span className="badge badge-primary">{order.status}</span>
                     </td>
                     <td>{order.orderDate ? new Date(order.orderDate).toLocaleDateString() : '-'}</td>
-                    <td>{order.deliveryDate || order.dueDate ? new Date(order.deliveryDate || order.dueDate).toLocaleDateString() : '-'}</td>
+                    <td>{(order.deliveryDate || order.dueDate) ? new Date(order.deliveryDate || order.dueDate).toLocaleDateString() : '-'}</td>
                     <td>₹{order.amount || order.totalAmount || '0'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            <TablePagination
+              page={ordersPage}
+              pageSize={ordersPageSize}
+              totalItems={customerOrders.length}
+              onPageChange={setOrdersPage}
+              onPageSizeChange={(size) => { setOrdersPageSize(size); setOrdersPage(1); }}
+            />
           </div>
         ) : (
           <p className="text-center text-gray-600 py-8">No orders found for this customer.</p>
@@ -359,7 +374,6 @@ const CustomerPage = () => {
         </div>
       </Modal>
 
-      {/* Search Bar */}
       <div className="search-box mb-6">
         <input
           type="text"
@@ -370,68 +384,79 @@ const CustomerPage = () => {
         />
       </div>
 
-      {/* Customers Table */}
       {loading && !showForm ? (
         <div className="text-center py-8">
           <p className="text-gray-600">Loading customers...</p>
         </div>
       ) : (
-        <div className="table-responsive">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Customer ID</th>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>Address</th>
-                <th>Date Added</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCustomers.length > 0 ? (
-                filteredCustomers.map(customer => (
-                  <tr key={customer._id || customer.id}>
-                    <td><strong>{customer.customerId || customer.id}</strong></td>
-                    <td><strong>{customer.name}</strong></td>
-                    <td>{customer.phone}</td>
-                    <td>{customer.email || '-'}</td>
-                    <td>{customer.address || '-'}</td>
-                    <td>{new Date(customer.dateAdded || customer.createdAt).toLocaleDateString()}</td>
-                    <td>
-                      <div className="flex gap-2 flex-wrap">
-                        <button
-                          onClick={() => handleEdit(customer)}
-                          className="btn btn-small btn-primary"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleViewOrders(customer._id || customer.id)}
-                          className="btn btn-small btn-warning"
-                        >
-                          View Orders
-                        </button>
-                        <button
-                          onClick={() => handleDelete(customer._id || customer.id)}
-                          className="btn btn-small btn-danger"
-                        >
-                          Delete
-                        </button>
-                      </div>
+        <div>
+          <div className="table-responsive">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Customer ID</th>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Email</th>
+                  <th>Address</th>
+                  <th>Date Added</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedCustomers.length > 0 ? (
+                  paginatedCustomers.map(customer => (
+                    <tr key={customer._id || customer.id}>
+                      <td><strong>{customer.customerId || customer.id}</strong></td>
+                      <td><strong>{customer.name}</strong></td>
+                      <td>{customer.phone}</td>
+                      <td>{customer.email || '-'}</td>
+                      <td>{customer.address || '-'}</td>
+                      <td>{new Date(customer.dateAdded || customer.createdAt).toLocaleDateString()}</td>
+                      <td>
+                        <div className="flex gap-2 flex-wrap">
+                          <button
+                            onClick={() => handleEdit(customer)}
+                            className="btn btn-small btn-primary"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleViewOrders(customer._id || customer.id)}
+                            className="btn btn-small btn-warning"
+                          >
+                            View Orders
+                          </button>
+                          <button
+                            onClick={() => handleDelete(customer._id || customer.id)}
+                            className="btn btn-small btn-danger"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="7" className="text-center py-4 text-gray-600">
+                      {searchTerm ? 'No customers found matching your search.' : 'No customers yet. Add one to get started!'}
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="7" className="text-center py-4 text-gray-600">
-                    {searchTerm ? 'No customers found matching your search.' : 'No customers yet. Add one to get started!'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <TablePagination
+            page={currentPage}
+            pageSize={pageSize}
+            totalItems={filteredCustomers.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(nextSize) => {
+              setPageSize(nextSize);
+              setCurrentPage(1);
+            }}
+          />
         </div>
       )}
     </div>

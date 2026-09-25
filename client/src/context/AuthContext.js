@@ -12,10 +12,9 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
       if (token) {
         try {
-          const storedUser = localStorage.getItem('boutique_current_user');
-          if (storedUser) {
-            setUser(JSON.parse(storedUser));
-          }
+          const response = await authAPI.getCurrentUser();
+          setUser(response.data);
+          localStorage.setItem('boutique_current_user', JSON.stringify(response.data));
         } catch (error) {
           console.error('Auth check failed:', error);
           setToken(null);
