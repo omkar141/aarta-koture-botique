@@ -30,18 +30,11 @@ const ProfilePage = () => {
         phone: currentUser.phone || '',
         address: currentUser.address || ''
       });
-      fetchUserStats();
+      userAPI.getUserStats(currentUser.id)
+        .then(response => setUserStats(response.data))
+        .catch(err => console.error('Failed to fetch user stats:', err));
     }
   }, [currentUser]);
-
-  const fetchUserStats = async () => {
-    try {
-      const response = await userAPI.getUserStats(currentUser.id);
-      setUserStats(response.data);
-    } catch (err) {
-      console.error('Failed to fetch user stats:', err);
-    }
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

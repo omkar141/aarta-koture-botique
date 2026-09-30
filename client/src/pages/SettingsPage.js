@@ -10,6 +10,7 @@ const SettingsPage = () => {
   const [businessName, setBusinessName] = useState('');
   const [businessTagline, setBusinessTagline] = useState('');
   const [theme, setTheme] = useState('emerald');
+  const [themeMode, setThemeMode] = useState('light');
   const [saveMessage, setSaveMessage] = useState('');
 
   // Load saved settings
@@ -20,6 +21,7 @@ const SettingsPage = () => {
       setBusinessName(settings.businessName || 'Aarta Kouture');
       setBusinessTagline(settings.businessTagline || 'By Shruti Reddy');
       setTheme(settings.theme || 'emerald');
+      setThemeMode(settings.themeMode || (settings.theme === 'midnight' ? 'dark' : 'light'));
       if (settings.customLogo) {
         setLogoPreview(settings.customLogo);
       }
@@ -66,6 +68,7 @@ const SettingsPage = () => {
       businessTagline,
       customLogo: logoPreview,
       theme,
+      themeMode,
       updatedAt: new Date().toISOString(),
       updatedBy: user.email
     };
@@ -85,6 +88,7 @@ const SettingsPage = () => {
     const settings = savedSettings ? JSON.parse(savedSettings) : {};
     
     settings.theme = theme;
+    settings.themeMode = themeMode;
     settings.updatedAt = new Date().toISOString();
     settings.updatedBy = user.email;
 
@@ -120,7 +124,11 @@ const SettingsPage = () => {
     { id: 'blue', name: 'Ocean Blue', primary: '#3b82f6', secondary: '#60a5fa', description: 'Professional blue theme' },
     { id: 'emerald', name: 'Emerald Green', primary: '#10b981', secondary: '#34d399', description: 'Fresh green theme' },
     { id: 'rose', name: 'Rose Wine', primary: '#e11d48', secondary: '#f43f5e', description: 'Bold rose theme' },
-    { id: 'amber', name: 'Amber Gold', primary: '#f59e0b', secondary: '#fbbf24', description: 'Warm amber theme' }
+    { id: 'amber', name: 'Amber Gold', primary: '#f59e0b', secondary: '#fbbf24', description: 'Warm amber theme' },
+    { id: 'lavender', name: 'Lavender Luxe', primary: '#8b5cf6', secondary: '#c084fc', description: 'Soft luxury violet palette' },
+    { id: 'forest', name: 'Forest Fresh', primary: '#16a34a', secondary: '#4ade80', description: 'Natural premium green palette' },
+    { id: 'saffron', name: 'Saffron Glow', primary: '#f97316', secondary: '#fb923c', description: 'Warm editorial orange theme' },
+    { id: 'midnight', name: 'Midnight Dark', primary: '#0f172a', secondary: '#334155', description: 'Premium dark luxury theme' }
   ];
 
   return (
@@ -297,6 +305,25 @@ const SettingsPage = () => {
               <p className="text-gray-600">
                 Select a color theme for your application. This will change the primary colors throughout the system.
               </p>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-sm font-semibold text-gray-700 mb-3">Appearance Mode</p>
+              <div className="flex flex-wrap gap-3">
+                {['light', 'dark'].map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setThemeMode(mode)}
+                    className={`px-4 py-2 rounded-lg border-2 font-semibold transition ${
+                      themeMode === mode
+                        ? 'bg-primary-500 text-white border-primary-500'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-primary-400'
+                    }`}
+                  >
+                    {mode === 'light' ? '☀️ Light Mode' : '🌙 Dark Mode'}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

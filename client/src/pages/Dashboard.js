@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
 import { customerAPI, orderAPI, paymentAPI, inventoryAPI } from '../services/api';
 import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 
 const Dashboard = () => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [orders, setOrders] = useState([]);
