@@ -3,6 +3,16 @@ import { paymentAPI, customerAPI, orderAPI } from '../services/api';
 import Modal from '../components/Modal';
 import TablePagination from '../components/TablePagination';
 
+const loadRazorpayScript = () => new Promise((resolve, reject) => {
+  if (window.Razorpay) return resolve();
+  const script = document.createElement('script');
+  script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+  script.async = true;
+  script.onload = resolve;
+  script.onerror = () => reject(new Error('Unable to load secure checkout'));
+  document.body.appendChild(script);
+});
+
 const PaymentPage = () => {
   const [payments, setPayments] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -16,6 +26,7 @@ const PaymentPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [gatewayConfigured, setGatewayConfigured] = useState(false);
 
   const [formData, setFormData] = useState({
     paymentId: '',
@@ -23,26 +34,36 @@ const PaymentPage = () => {
     orderId: '',
     amount: '',
     paymentDate: new Date().toISOString().split('T')[0],
-    status: 'Pending',
-    method: 'Cash',
+    status: 'Paid',
+    method: 'Razorpay Checkout',
     notes: ''
   });
 
-  const statusOptions = ['Pending', 'Paid', 'Failed', 'Refunded'];
-  const methodOptions = ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Wallet'];
+  const statusOptions = ['Pending', 'Paid', 'Completed', 'Failed', 'Refunded'];
+  const methodOptions = ['Razorpay Checkout', 'Cash', 'UPI', 'Card', 'Bank Transfer', 'Wallet'];
 
   useEffect(() => {
     fetchPayments();
     fetchCustomers();
     fetchOrders();
+    fetchGatewayConfig();
   }, []);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filterStatus]);
 
-  const fetchPayments = async () => {
-    setLoading(true);
+  useEffect(() => {
+    if (!payments.some(payment => payment.gatewayProvider === 'razorpay' && payment.status === 'Pending')) return undefined;
+    const refreshInterval = window.setInterval(() => {
+      fetchPayments(true);
+      fetchOrders();
+    }, 8000);
+    return () => window.clearInterval(refreshInterval);
+  }, [payments]);
+
+  const fetchPayments = async (quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
       const response = await paymentAPI.getAll();
       setPayments(response.data.payments || []);
@@ -50,7 +71,7 @@ const PaymentPage = () => {
       setError('Failed to load payments');
       console.error(err);
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   };
 
@@ -72,6 +93,15 @@ const PaymentPage = () => {
     }
   };
 
+  const fetchGatewayConfig = async () => {
+    try {
+      const response = await paymentAPI.getGatewayConfig();
+      setGatewayConfigured(response.data.configured);
+    } catch (err) {
+      console.error('Failed to load payment gateway configuration:', err);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       paymentId: '',
@@ -79,8 +109,8 @@ const PaymentPage = () => {
       orderId: '',
       amount: '',
       paymentDate: new Date().toISOString().split('T')[0],
-      status: 'Pending',
-      method: 'Cash',
+      status: 'Paid',
+      method: 'Razorpay Checkout',
       notes: ''
     });
     setEditingId(null);
@@ -89,6 +119,15 @@ const PaymentPage = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'customerId') {
+      setFormData(prev => ({ ...prev, customerId: value, orderId: '', amount: '' }));
+      return;
+    }
+    if (name === 'orderId') {
+      const order = orders.find(item => String(item.id) === value);
+      setFormData(prev => ({ ...prev, orderId: value, amount: order?.balanceAmount ?? prev.amount }));
+      return;
+    }
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -99,6 +138,48 @@ const PaymentPage = () => {
     setSuccess('');
 
     try {
+      if (!editingId && formData.method === 'Razorpay Checkout') {
+        if (!gatewayConfigured) throw new Error('Razorpay is not configured. Add the server gateway keys to enable checkout.');
+        await loadRazorpayScript();
+        const response = await paymentAPI.createGatewayOrder({ orderId: formData.orderId, amount: formData.amount, notes: formData.notes });
+        const { checkout } = response.data;
+        const razorpay = new window.Razorpay({
+          key: checkout.keyId,
+          amount: checkout.amount,
+          currency: checkout.currency,
+          name: 'Aarta Boutique',
+          description: `Payment for ${checkout.orderReference}`,
+          order_id: checkout.orderId,
+          prefill: { name: checkout.customerName, email: checkout.customerEmail, contact: checkout.customerPhone },
+          notes: { localPaymentId: String(response.data.payment.id) },
+          theme: { color: '#155e75' },
+          handler: async gatewayResponse => {
+            setLoading(true);
+            setError('');
+            try {
+              await paymentAPI.verifyGatewayPayment(gatewayResponse);
+              setSuccess('Payment verified and recorded.');
+              resetForm();
+              await Promise.all([fetchPayments(), fetchOrders()]);
+              setTimeout(() => setSuccess(''), 3000);
+            } catch (verifyError) {
+              setError(verifyError.response?.data?.message || 'Payment is awaiting server confirmation. Refresh shortly.');
+              fetchPayments();
+            } finally {
+              setLoading(false);
+            }
+          },
+          modal: { ondismiss: () => setLoading(false) },
+          retry: { enabled: true }
+        });
+        razorpay.on('payment.failed', event => {
+          setError(event.error?.description || 'Payment failed. You can try again.');
+          fetchPayments();
+        });
+        razorpay.open();
+        return;
+      }
+
       const payload = {
         ...formData,
         paymentMethod: formData.method,
@@ -117,7 +198,7 @@ const PaymentPage = () => {
       fetchPayments();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save payment');
+      setError(err.response?.data?.message || err.message || 'Failed to save payment');
     } finally {
       setLoading(false);
     }
@@ -165,13 +246,14 @@ const PaymentPage = () => {
 
   const paginatedPayments = filteredPayments.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const totalPaid = payments.filter(p => p.status === 'Paid').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const totalPaid = payments.filter(p => ['Paid', 'Completed', 'Captured'].includes(p.status)).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const totalPending = payments.filter(p => p.status === 'Pending').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  const totalRevenue = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const totalRevenue = totalPaid;
 
   const getStatusBadgeClass = (status) => {
     const badgeClasses = {
       Paid: 'badge-completed',
+      Completed: 'badge-completed',
       Pending: 'badge-pending',
       Failed: 'badge-danger',
       Refunded: 'badge-new'
@@ -223,33 +305,19 @@ const PaymentPage = () => {
 
             <div className="form-group">
               <label>Order ID</label>
-                <select name="orderId" value={formData.orderId} onChange={handleInputChange} required>
-                  <option value="">Select order</option>
-                  {orders
-                    .filter(order => !formData.customerId || order.customerId === Number(formData.customerId))
-                    .map(order => (
-                      <option key={order.id} value={order.id}>{order.orderId} - {order.customerName}</option>
-                    ))}
-                </select>
+              <select name="orderId" value={formData.orderId} onChange={handleInputChange} required>
+                <option value="">Select order</option>
+                {orders
+                  .filter(order => (!formData.customerId || String(order.customerId) === String(formData.customerId)) && Number(order.balanceAmount) > 0)
+                  .map(order => (
+                    <option key={order.id} value={order.id}>{order.orderId} - {order.customerName} (₹{Number(order.balanceAmount).toLocaleString()})</option>
+                  ))}
+              </select>
             </div>
 
             <div className="form-group">
               <label>Amount</label>
               <input type="number" name="amount" value={formData.amount} onChange={handleInputChange} required min="0" step="0.01" />
-            </div>
-
-            <div className="form-group">
-              <label>Payment Date</label>
-              <input type="date" name="paymentDate" value={formData.paymentDate} onChange={handleInputChange} required />
-            </div>
-
-            <div className="form-group">
-              <label>Status</label>
-              <select name="status" value={formData.status} onChange={handleInputChange}>
-                {statusOptions.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
             </div>
 
             <div className="form-group">
@@ -260,6 +328,27 @@ const PaymentPage = () => {
                 ))}
               </select>
             </div>
+
+            {formData.method === 'Razorpay Checkout' ? (
+              <div className="form-group">
+                <label>Checkout options</label>
+                <p>UPI, cards, net banking, and wallets</p>
+                {!gatewayConfigured && <p className="text-sm text-amber-700">Razorpay keys are not configured on the server.</p>}
+              </div>
+            ) : (
+              <>
+                <div className="form-group">
+                  <label>Payment Date</label>
+                  <input type="date" name="paymentDate" value={formData.paymentDate} onChange={handleInputChange} required />
+                </div>
+                <div className="form-group">
+                  <label>Status</label>
+                  <select name="status" value={formData.status} onChange={handleInputChange}>
+                    {statusOptions.map(status => <option key={status} value={status}>{status}</option>)}
+                  </select>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="form-group">
@@ -269,7 +358,7 @@ const PaymentPage = () => {
 
           <div className="btn-container">
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Saving...' : editingId ? 'Update Payment' : 'Create Payment'}
+              {loading ? 'Processing...' : editingId ? 'Update Payment' : formData.method === 'Razorpay Checkout' ? 'Continue to Checkout' : 'Record Payment'}
             </button>
             <button type="button" className="btn btn-secondary" onClick={resetForm}>
               Cancel
@@ -340,14 +429,10 @@ const PaymentPage = () => {
                         </td>
                         <td>{payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : '-'}</td>
                         <td>
-                          <div className="flex gap-2 flex-wrap">
-                            <button onClick={() => handleEdit(payment)} className="btn btn-small btn-primary">
-                              Edit
-                            </button>
-                            <button onClick={() => handleDelete(payment._id || payment.id)} className="btn btn-small btn-danger">
-                              Delete
-                            </button>
-                          </div>
+                          {!payment.gatewayProvider && <div className="flex gap-2 flex-wrap">
+                            <button onClick={() => handleEdit(payment)} className="btn btn-small btn-primary">Edit</button>
+                            <button onClick={() => handleDelete(payment._id || payment.id)} className="btn btn-small btn-danger">Delete</button>
+                          </div>}
                         </td>
                       </tr>
                     );

@@ -14,30 +14,41 @@ const Dashboard = () => {
   const [inventory, setInventory] = useState([]);
 
   useEffect(() => {
+    let active = true;
+    let initialLoad = true;
+    const fetchAllData = async () => {
+      if (initialLoad) setLoading(true);
+      try {
+        const [ordersRes, paymentsRes, customersRes, inventoryRes] = await Promise.all([
+          orderAPI.getAll(),
+          paymentAPI.getAll(),
+          customerAPI.getAll(),
+          inventoryAPI.getAll()
+        ]);
+        if (!active) return;
+        setOrders(ordersRes.data.orders || []);
+        setPayments(paymentsRes.data.payments || []);
+        setCustomers(customersRes.data.customers || []);
+        setInventory(inventoryRes.data.inventory || []);
+      } catch (err) {
+        if (active) {
+          setError('Failed to load dashboard data');
+          console.error(err);
+        }
+      } finally {
+        if (active && initialLoad) {
+          initialLoad = false;
+          setLoading(false);
+        }
+      }
+    };
     fetchAllData();
+    const refreshInterval = window.setInterval(fetchAllData, 15000);
+    return () => {
+      active = false;
+      window.clearInterval(refreshInterval);
+    };
   }, []);
-
-  const fetchAllData = async () => {
-    setLoading(true);
-    try {
-      const [ordersRes, paymentsRes, customersRes, inventoryRes] = await Promise.all([
-        orderAPI.getAll(),
-        paymentAPI.getAll(),
-        customerAPI.getAll(),
-        inventoryAPI.getAll()
-      ]);
-
-      setOrders(ordersRes.data.orders || []);
-      setPayments(paymentsRes.data.payments || []);
-      setCustomers(customersRes.data.customers || []);
-      setInventory(inventoryRes.data.inventory || []);
-    } catch (err) {
-      setError('Failed to load dashboard data');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Chart Colors
   const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe', '#43e97b', '#fa709a'];
@@ -46,8 +57,8 @@ const Dashboard = () => {
   const stats = {
     totalCustomers: customers.length,
     totalOrders: orders.length,
-    totalRevenue: payments.reduce((sum, p) => sum + (parseFloat(p.advancePaid) || 0), 0),
-    pendingAmount: payments.reduce((sum, p) => sum + (parseFloat(p.balanceAmount) || 0), 0),
+    totalRevenue: payments.filter(p => ['Paid', 'Completed', 'Captured'].includes(p.status)).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0),
+    pendingAmount: orders.reduce((sum, order) => sum + (parseFloat(order.balanceAmount) || 0), 0),
     lowStockItems: inventory.filter(i => parseFloat(i.quantity) <= parseFloat(i.minStock)).length,
     outOfStockItems: inventory.filter(i => parseFloat(i.quantity) === 0).length,
   };
@@ -64,9 +75,9 @@ const Dashboard = () => {
 
   // Payment Status Data
   const paymentStatusData = [
-    { name: 'Pending', value: payments.filter(p => parseFloat(p.balanceAmount) === parseFloat(p.totalAmount)).length },
-    { name: 'Partial', value: payments.filter(p => parseFloat(p.balanceAmount) > 0 && parseFloat(p.balanceAmount) !== parseFloat(p.totalAmount)).length },
-    { name: 'Completed', value: payments.filter(p => parseFloat(p.balanceAmount) <= 0).length }
+    { name: 'Pending', value: orders.filter(order => Number(order.amount) > 0 && Number(order.balanceAmount) >= Number(order.amount)).length },
+    { name: 'Partial', value: orders.filter(order => Number(order.balanceAmount) > 0 && Number(order.balanceAmount) < Number(order.amount)).length },
+    { name: 'Completed', value: orders.filter(order => Number(order.balanceAmount) <= 0).length }
   ];
 
   // Dress Type Distribution

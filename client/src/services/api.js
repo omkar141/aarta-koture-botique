@@ -19,6 +19,11 @@ export const authAPI = {
     localStorage.setItem('boutique_current_user', JSON.stringify(response.data.user));
     return response;
   },
+  loginSuperAdmin: async (email, password) => {
+    const response = await request(api.post('/super-admin/login', { email, password }));
+    localStorage.setItem('boutique_current_user', JSON.stringify(response.data.user));
+    return response;
+  },
   register: data => request(api.post('/auth/register', data)),
   getCurrentUser: () => request(api.get('/auth/me')),
   logout: () => request(api.post('/auth/logout')),
@@ -54,7 +59,21 @@ export const orderAPI = {
 
 export const paymentAPI = {
   ...resourceAPI('payments', 'payments'),
-  getAll: (status = '', customerId = '', duePayment = false) => request(api.get('/payments', { params: { ...(status ? { status } : {}), ...(customerId ? { customerId } : {}), ...(duePayment ? { duePayment: true } : {}) } }))
+  getAll: (status = '', customerId = '', duePayment = false) => request(api.get('/payments', { params: { ...(status ? { status } : {}), ...(customerId ? { customerId } : {}), ...(duePayment ? { duePayment: true } : {}) } })),
+  getGatewayConfig: () => request(api.get('/payments/gateway/config')),
+  createGatewayOrder: data => request(api.post('/payments/gateway/orders', data)),
+  verifyGatewayPayment: data => request(api.post('/payments/gateway/verify', data))
+};
+
+export const integrationSettingsAPI = {
+  get: () => request(api.get('/settings/integrations')),
+  save: data => request(api.put('/settings/integrations', data))
+};
+
+export const superAdminAPI = {
+  getTenants: () => request(api.get('/super-admin/tenants')),
+  createTenant: data => request(api.post('/super-admin/tenants', data)),
+  updateTenant: (id, data) => request(api.put(`/super-admin/tenants/${id}`, data))
 };
 
 export const inventoryAPI = {

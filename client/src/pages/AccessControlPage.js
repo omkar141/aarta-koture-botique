@@ -295,16 +295,6 @@ const AccessControlPage = () => {
           >
             Users
           </button>
-          <button
-            onClick={() => setActiveTab('roles')}
-            className={`px-6 py-3 font-semibold ${
-              activeTab === 'roles'
-                ? 'border-b-2 border-blue-500 text-blue-600'
-                : 'text-gray-600'
-            }`}
-          >
-            Roles
-          </button>
         </div>
 
         {/* Users Tab */}
@@ -391,7 +381,7 @@ const AccessControlPage = () => {
                           required
                         >
                           <option value="">Select Role</option>
-                          {roles.map(role => (
+                          {roles.filter(role => role.name !== 'owner').map(role => (
                             <option key={role.id} value={role.id}>
                               {role.displayName}
                             </option>
@@ -462,7 +452,7 @@ const AccessControlPage = () => {
                             {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}
                           </td>
                           <td>
-                            <div className="flex gap-2 flex-wrap">
+                            {user.role === 'owner' ? <span className="text-xs text-gray-500">Managed by platform</span> : <div className="flex gap-2 flex-wrap">
                               <button
                                 onClick={() => handleEditUser(user)}
                                 className="btn btn-small btn-primary"
@@ -483,7 +473,7 @@ const AccessControlPage = () => {
                                   Delete
                                 </button>
                               )}
-                            </div>
+                            </div>}
                           </td>
                         </tr>
                       ))

@@ -19,7 +19,7 @@ This guide is tailored to this repository (`client` + `server` npm workspaces) a
 Use this target architecture:
 
 - Frontend: Azure Static Web App
-- Backend API: Azure App Service (Linux, Node.js 20)
+- Backend API: Azure App Service (Linux, Node.js 22 or newer; required by `better-sqlite3`)
 - Database: MongoDB Atlas
 - CI/CD: Azure Pipelines (multi-stage YAML)
 
@@ -143,7 +143,7 @@ pool:
 variables:
   - group: vg-boutique-prod
   - name: nodeVersion
-    value: '20.x'
+    value: '22.x'
 
 stages:
   - stage: CI

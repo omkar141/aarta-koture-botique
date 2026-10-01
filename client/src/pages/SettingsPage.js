@@ -379,6 +379,7 @@ const SettingsPage = () => {
             </button>
           </div>
         )}
+
       </div>
     </div>
   );

@@ -1,44 +1,51 @@
 const nodemailer = require('nodemailer');
 const { db } = require('./db');
 const { createEmailTemplate } = require('./emailTemplates');
+const { getIntegrationConfig } = require('./integrationConfig');
+let cachedTransporter;
+let cachedTransporterKey;
 
-const hasMailConfig = Boolean(process.env.MAIL_HOST && process.env.MAIL_USER && process.env.MAIL_PASSWORD);
-const transporter = hasMailConfig
-  ? nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: Number(process.env.MAIL_PORT || 587),
-      secure: process.env.MAIL_SECURE === 'true',
-      auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASSWORD
-      }
-    })
-  : null;
+const getTransporter = config => {
+  if (!config.mailHost || !config.mailUser || !config.mailPassword) return null;
+  const transporterKey = JSON.stringify([config.mailHost, config.mailPort, config.mailSecure, config.mailUser, config.mailPassword]);
+  if (transporterKey !== cachedTransporterKey) {
+    cachedTransporter = nodemailer.createTransport({
+      host: config.mailHost,
+      port: Number(config.mailPort || 587),
+      secure: config.mailSecure,
+      auth: { user: config.mailUser, pass: config.mailPassword }
+    });
+    cachedTransporterKey = transporterKey;
+  }
+  return cachedTransporter;
+};
 
-const notificationEmails = () => (process.env.MAIL_NOTIFY_EMAILS || '')
+const notificationEmails = config => (config.mailNotifyEmails || '')
   .split(',')
   .map(email => email.trim())
   .filter(Boolean);
 
-const recipientsFor = (table, record) => {
+const recipientsFor = (table, record, config) => {
   if (table === 'customers' || table === 'users') return record.email ? [record.email] : [];
-  if (table === 'orders') return db.prepare('SELECT email FROM customers WHERE id=?').get(record.customerId)?.email ? [db.prepare('SELECT email FROM customers WHERE id=?').get(record.customerId).email] : notificationEmails();
+  if (table === 'orders') return db.prepare('SELECT email FROM customers WHERE id=? AND tenantId=?').get(record.customerId, record.tenantId)?.email ? [db.prepare('SELECT email FROM customers WHERE id=? AND tenantId=?').get(record.customerId, record.tenantId).email] : notificationEmails(config);
   if (table === 'payments') {
     const customer = record.customerId
-      ? db.prepare('SELECT email FROM customers WHERE id=?').get(record.customerId)
+      ? db.prepare('SELECT email FROM customers WHERE id=? AND tenantId=?').get(record.customerId, record.tenantId)
       : null;
     const orderCustomer = record.orderId
-      ? db.prepare('SELECT c.email FROM customers c JOIN orders o ON o.customerId=c.id WHERE o.id=?').get(record.orderId)
+      ? db.prepare('SELECT c.email FROM customers c JOIN orders o ON o.customerId=c.id AND o.tenantId=c.tenantId WHERE o.id=? AND o.tenantId=?').get(record.orderId, record.tenantId)
       : null;
     return [customer?.email || orderCustomer?.email].filter(Boolean).length
       ? [customer?.email || orderCustomer?.email]
-      : notificationEmails();
+      : notificationEmails(config);
   }
-  return notificationEmails();
+  return notificationEmails(config);
 };
 
 const sendEntityEventEmail = async (event, table, record) => {
-  const recipients = recipientsFor(table, record);
+  const config = getIntegrationConfig();
+  const transporter = getTransporter(config);
+  const recipients = recipientsFor(table, record, config);
   if (!recipients.length) return { status: 'skipped', reason: 'No recipient email address' };
   if (!transporter) {
     console.warn(`Email skipped for ${event}: configure MAIL_HOST, MAIL_USER, and MAIL_PASSWORD.`);
@@ -48,7 +55,7 @@ const sendEntityEventEmail = async (event, table, record) => {
   const message = createEmailTemplate(event, record);
   try {
     const result = await transporter.sendMail({
-      from: process.env.MAIL_FROM || process.env.MAIL_USER,
+      from: config.mailFrom || config.mailUser,
       to: recipients.join(', '),
       subject: message.subject,
       text: message.text,

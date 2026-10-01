@@ -32,18 +32,23 @@ const ReportsPage = () => {
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
+    let active = true;
     const loadReportData = async () => {
       try {
-        setLoading(true);
         const response = await dashboardAPI.getReports();
-        setReport(response.data);
+        if (active) setReport(response.data);
       } catch (err) {
-        setError(err.response?.data?.message || 'Unable to load report data');
+        if (active) setError(err.response?.data?.message || 'Unable to load report data');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
     loadReportData();
+    const refreshInterval = window.setInterval(loadReportData, 15000);
+    return () => {
+      active = false;
+      window.clearInterval(refreshInterval);
+    };
   }, []);
 
   const filtered = useMemo(() => {
@@ -73,7 +78,8 @@ const ReportsPage = () => {
   const visibleOrders = filtered.orders.slice((page - 1) * pageSize, page * pageSize);
 
   const metrics = useMemo(() => {
-    const revenue = filtered.payments.reduce((sum, payment) => sum + Number(payment.amount || payment.advancePaid || 0), 0);
+    const revenue = filtered.payments.filter(payment => ['Paid', 'Completed', 'Captured'].includes(payment.status))
+      .reduce((sum, payment) => sum + Number(payment.amount || payment.advancePaid || 0), 0);
     const orderValue = filtered.orders.reduce((sum, order) => sum + Number(order.amount || 0), 0);
     const outstanding = filtered.orders.reduce((sum, order) => sum + Number(order.balanceAmount || 0), 0);
     const delivered = filtered.orders.filter(order => order.status === 'Delivered').length;
@@ -96,7 +102,7 @@ const ReportsPage = () => {
       const paymentDate = new Date(payment.paymentDate || payment.createdAt);
       return `${paymentDate.getFullYear()}-${paymentDate.getMonth()}` === key;
     });
-    return { month: date.toLocaleString('en-IN', { month: 'short' }), revenue: payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0) };
+    return { month: date.toLocaleString('en-IN', { month: 'short' }), revenue: payments.filter(payment => ['Paid', 'Completed', 'Captured'].includes(payment.status)).reduce((sum, payment) => sum + Number(payment.amount || 0), 0) };
   }), [filtered.payments, currentYear, currentMonth]);
 
   const workloadData = useMemo(() => {

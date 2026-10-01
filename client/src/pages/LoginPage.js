@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
 import Logo from '../components/Logo';
@@ -126,6 +126,9 @@ const LoginPage = () => {
               <p className="text-gray-700 mt-1">member50@boutique.com / password123</p>
             </div>
           </div>
+        </div>
+        <div className="mt-5 text-center">
+          <Link to="/super-admin/login" className="text-xs font-semibold text-gray-600 underline underline-offset-4 hover:text-primary-700">Platform super admin</Link>
         </div>
       </div>
     </div>

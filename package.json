@@ -8,9 +8,10 @@
   ],
   "scripts": {
     "dev": "npm run api & npm run start --workspace=client",
-    "api": "npm start --workspace=server",
+    "api": "npm start --prefix server",
     "start": "npm start --workspace=client",
-    "build": "npm run build --workspace=client"
+    "build": "npm run build --workspace=client",
+    "test": "npm test --prefix server"
   },
   "keywords": [],
   "author": "",

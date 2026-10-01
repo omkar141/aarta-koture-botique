@@ -129,7 +129,13 @@ The app comes with pre-configured demo users for testing.
 
 ## Data Persistence
 
-Data is stored in SQLite at `server/boutique.sqlite`. Set `JWT_SECRET` and optionally `CLIENT_URL` in the environment before deploying. The frontend can use a different API URL with `REACT_APP_API_URL`.
+Data is stored in SQLite at `server/boutique.sqlite`. The API requires Node.js 22 or newer. Set `JWT_SECRET` and optionally `CLIENT_URL` in the environment before deploying. The frontend can use a different API URL with `REACT_APP_API_URL`.
+
+### Razorpay Checkout
+
+Add `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` to `server/.env` or the API host's environment. Use Razorpay test keys for sandbox checkout and live keys only in a secured production environment. The key secret and webhook secret must never be added to frontend configuration.
+
+Configure a Razorpay webhook to call `https://<api-host>/api/payments/razorpay/webhook`, subscribe to `payment.captured` and `payment.failed`, and use the same webhook secret in `RAZORPAY_WEBHOOK_SECRET`. Checkout payments remain pending until the API verifies Razorpay's signature and confirms capture; the webhook provides server-to-server status reconciliation. Successful capture updates the payment record and order balance in one database transaction. Dashboard and report revenue include settled payments only. Cash and other offline payments can still be recorded from Payment Management.
 
 ### Customer Email Notifications
 

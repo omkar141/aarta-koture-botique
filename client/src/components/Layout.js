@@ -26,9 +26,13 @@ const Layout = ({ children }) => {
     { name: 'Settings', path: '/settings', icon: '⚙️', roles: ['owner'] }
   ];
 
-  const filteredMenuItems = menuItems.filter(item => 
-    !item.roles || item.roles.includes(user?.role)
-  );
+  const filteredMenuItems = menuItems.filter(item => {
+    const module = item.path === '/access-control' ? 'users' : item.path.slice(1) || 'dashboard';
+    const allowedByRole = !item.roles || item.roles.includes(user?.role);
+    const allowedByModule = !user?.modules?.length || user.modules.includes(module);
+    const ownerSettings = item.path === '/settings' && user?.role === 'owner';
+    return allowedByRole && (allowedByModule || ownerSettings);
+  });
 
   return (
     <div className="flex h-screen bg-gray-50">

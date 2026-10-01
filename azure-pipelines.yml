@@ -14,7 +14,7 @@ pool:
 variables:
   - group: vg-boutique-prod
   - name: nodeVersion
-    value: '20.x'
+    value: '22.x'
 
 stages:
   - stage: CI
@@ -30,6 +30,12 @@ stages:
 
           - script: npm ci
             displayName: Install dependencies (workspaces)
+
+          - script: npm ci --prefix server
+            displayName: Install API dependencies
+
+          - script: npm test --prefix server
+            displayName: Run API tests
 
           - script: npm run build --workspace=client
             displayName: Build frontend

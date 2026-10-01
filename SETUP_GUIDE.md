@@ -1,5 +1,11 @@
 # Setup & Quick Start Guide
 
+## Platform Super Admin
+
+This application uses the API and SQLite database for tenant accounts. Copy `server/.env.example` to `server/.env` and set `JWT_SECRET`, `CONFIG_ENCRYPTION_KEY`, `SUPER_ADMIN_EMAIL`, and `SUPER_ADMIN_PASSWORD` to private, strong values before starting the server. On startup, the server creates one platform super-admin account from those values if one does not already exist; it does not use a built-in default password. If a super-admin account already exists, changing those environment values will not reset its password.
+
+Sign in at `/super-admin/login`. The platform console creates tenant workspaces and their first tenant admin, assigns each tenant's Owner/Staff/Accountant module and action privileges, activates or deactivates tenants, and configures shared SMTP/Razorpay credentials. Tenant data already in the database is migrated into the initial `Aarta Kouture` tenant. Keep `CONFIG_ENCRYPTION_KEY` unchanged after saving platform credentials.
+
 ## Quick Start (3 Minutes) - Frontend Only
 
 ### Prerequisites
